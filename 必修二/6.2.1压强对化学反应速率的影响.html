@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>活塞气体分子 — 压强与反应速率</title>
+<style>
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    background: #ece8e0;
+    font-family: "PingFang SC", "Microsoft YaHei", "Hiragino Sans GB", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .card {
+    background: #fdfdfc;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.04);
+    padding: 20px 20px 12px;
+  }
+
+  canvas {
+    display: block;
+    border-radius: 4px;
+  }
+
+  .controls {
+    margin-top: 20px;
+    display: flex;
+    gap: 12px;
+  }
+
+  .btn {
+    padding: 11px 36px;
+    font-size: 20px;
+    font-weight: 600;
+    font-family: inherit;
+    letter-spacing: 0.02em;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.15s, transform 0.1s, box-shadow 0.15s;
+    outline-offset: 2px;
+  }
+
+  .btn:focus-visible {
+    outline: 2px solid #5b8bd4;
+  }
+
+  .btn-pressure {
+    background: #d4453b;
+    color: #fff;
+    box-shadow: 0 1px 2px rgba(212,69,59,0.3);
+  }
+
+  .btn-pressure:hover {
+    background: #bf3b31;
+    box-shadow: 0 2px 6px rgba(212,69,59,0.35);
+  }
+
+  .btn-pressure:active {
+    background: #a8332a;
+    transform: scale(0.97);
+  }
+
+  .btn-inject {
+    background: #0d9488;
+    color: #fff;
+    box-shadow: 0 1px 2px rgba(13,148,136,0.3);
+  }
+
+  .btn-inject:hover {
+    background: #0f766e;
+    box-shadow: 0 2px 6px rgba(13,148,136,0.35);
+  }
+
+  .btn-inject:active {
+    background: #115e59;
+    transform: scale(0.97);
+  }
+
+  .btn-reset {
+    background: #e2e0da;
+    color: #5e574d;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.06);
+  }
+
+  .btn-reset:hover {
+    background: #d5d2cb;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+  }
+
+  .btn-reset:active {
+    background: #c8c4bc;
+    transform: scale(0.97);
+  }
+
+  .btn-inert {
+    background: #e07b2c;
+    color: #fff;
+    box-shadow: 0 1px 2px rgba(224,123,44,0.3);
+  }
+
+  .btn-inert:hover {
+    background: #c96a1e;
+    box-shadow: 0 2px 6px rgba(224,123,44,0.35);
+  }
+
+  .btn-inert:active {
+    background: #a8551a;
+    transform: scale(0.97);
+  }
+
+  .btn-inert-cp {
+    background: #d4784a;
+    color: #fff;
+    box-shadow: 0 1px 2px rgba(212,120,74,0.3);
+  }
+
+  .btn-inert-cp:hover {
+    background: #ba6539;
+    box-shadow: 0 2px 6px rgba(212,120,74,0.35);
+  }
+
+  .btn-inert-cp:active {
+    background: #9e522b;
+    transform: scale(0.97);
+  }
+
+  .hint {
+    margin-top: 14px;
+    color: #8b8579;
+    font-size: 20px;
+    letter-spacing: 0.02em;
+  }
+</style>
+</head>
+<body>
+
+<div class="card">
+  <canvas id="c" width="800" height="540"></canvas>
+</div>
+
+<div class="controls">
+  <button class="btn btn-pressure" id="btnPressure">增大压强</button>
+  <button class="btn btn-inject" id="btnInject">恒容充入气态反应物</button>
+  <button class="btn btn-inert" id="btnInert">恒容充入无关气体</button>
+  <button class="btn btn-inert-cp" id="btnInertCP">恒压充入无关气体</button>
+</div>
+<div class="controls" style="margin-top:8px">
+  <button class="btn btn-reset" id="btnReset">重置</button>
+</div>
+<p class="hint">点击按钮观察气体分子在压缩过程中的变化</p>
+
+<script>
+// ── Canvas ──────────────────────────────────────────────
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+
+// ── Palette ─────────────────────────────────────────────
+const PAL = {
+  cylinder:    '#7a8a9b',   // steel gray walls
+  cylinderBg:  '#f5f7fa',   // subtle fill inside cylinder
+  pistonBar:   '#364152',   // dark slate
+  pistonRod:   '#8b9db3',   // lighter steel
+  pistonGrip:  '#5b6e82',   // handle color
+  molecule:    '#2d5fc1',   // deep indigo blue
+  moleculeNew:   '#7aad1a',   // warm yellow-green — new reactant highlight
+  moleculeInert:  '#e87d20',   // orange — inert gas
+  inertNew:       '#f5a623',   // bright orange — new inert highlight
+  moleculeGlow:'rgba(45,95,193,0.18)',
+  tick:        '#b0becb',   // volume tick marks
+  text:        '#3d454f',   // explanatory text
+  floor:       '#5d6e7f',   // floor/platform
+  platform:    '#c8cdd4',   // base platform
+};
+
+function lerpColor(hexA, hexB, t) {
+  const ra = parseInt(hexA.slice(1, 3), 16);
+  const ga = parseInt(hexA.slice(3, 5), 16);
+  const ba = parseInt(hexA.slice(5, 7), 16);
+  const rb = parseInt(hexB.slice(1, 3), 16);
+  const gb = parseInt(hexB.slice(3, 5), 16);
+  const bb = parseInt(hexB.slice(5, 7), 16);
+  const r = Math.round(ra + (rb - ra) * t);
+  const g = Math.round(ga + (gb - ga) * t);
+  const b = Math.round(ba + (bb - ba) * t);
+  return `rgb(${r},${g},${b})`;
+}
+
+// ── Layout ──────────────────────────────────────────────
+const CYL = {
+  left: 250,
+  right: 550,
+  top: 60,
+  bottom: 404,
+  wall: 6,
+};
+
+const PISTON_SPEC = {
+  barH: 10,          // piston bar thickness
+  rodW: 8,
+  rodTop: 36,
+  gripR: 10,         // circular handle radius
+};
+
+const MOL = {
+  count: 12,
+  radius: 4.5,
+  speedMin: 40,      // px/s
+  speedMax: 90,
+  jitter: 300,       // max brownian acceleration px/s²
+};
+
+const ANIM = {
+  compressT: 0.5,    // seconds
+  holdT: 4.0,
+  releaseT: 0.5,
+  speedIdle: 1.0,
+  speedCompressed: 4.0,
+  injectT: 5.0,
+  injectCount: 8,
+  injectBurst: 200,
+  expandRatio: 0.15,
+};
+
+// ── State ───────────────────────────────────────────────
+let pistonY = CYL.top + (CYL.bottom - CYL.top) / 3;
+let state = 'idle';          // idle | compressing | holding | releasing | injecting | injectInert | injectInertCP
+let timer = 0;
+let speedMul = ANIM.speedIdle;
+let targetSpeedMul = ANIM.speedIdle;
+let textAlpha = 0;
+let targetTextAlpha = 0;
+let displayText = '';
+
+const molecules = [];
+
+// ── Init molecules ──────────────────────────────────────
+function spawnMolecules() {
+  molecules.length = 0;
+  const topY = pistonY + PISTON_SPEC.barH;
+  const areaW = CYL.right - CYL.left - MOL.radius * 2;
+  const areaH = CYL.bottom - topY - MOL.radius * 2;
+  for (let i = 0; i < MOL.count; i++) {
+    const a = Math.random() * Math.PI * 2;
+    const s = MOL.speedMin + Math.random() * (MOL.speedMax - MOL.speedMin);
+    molecules.push({
+      x: CYL.left + MOL.radius + Math.random() * areaW,
+      y: topY + MOL.radius + Math.random() * areaH,
+      vx: Math.cos(a) * s,
+      vy: Math.sin(a) * s,
+      color: PAL.molecule,
+      highlightColor: PAL.moleculeNew,
+      highlight: 0,
+    });
+  }
+}
+spawnMolecules();
+
+function injectMolecules(count, molColor, hlColor) {
+  const topBound = pistonY + PISTON_SPEC.barH;
+  const cx = (CYL.left + CYL.right) / 2;
+  const cy = (topBound + CYL.bottom) / 2;
+  for (let i = 0; i < count; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const speed = ANIM.injectBurst * (0.5 + Math.random() * 0.5);
+    molecules.push({
+      x: cx + (Math.random() - 0.5) * 20,
+      y: cy + (Math.random() - 0.5) * 20,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed,
+      color: molColor,
+      highlightColor: hlColor,
+      highlight: 1,
+    });
+  }
+}
+
+// ── State machine ───────────────────────────────────────
+function targetPistonY(st) {
+  if (st === 'compressing' || st === 'holding')
+    return CYL.top + (CYL.bottom - CYL.top) * 0.68;
+  if (st === 'injectInertCP')
+    return CYL.top + (CYL.bottom - CYL.top) * ANIM.expandRatio;
+  return CYL.top + (CYL.bottom - CYL.top) / 3;
+}
+
+function enterState(st) {
+  state = st;
+  timer = 0;
+  targetSpeedMul = (st === 'compressing' || st === 'holding')
+    ? ANIM.speedCompressed : ANIM.speedIdle;
+  targetTextAlpha = (st === 'compressing' || st === 'holding' || st === 'injecting' || st === 'injectInert' || st === 'injectInertCP') ? 1 : 0;
+  if (st === 'compressing')  displayText = '压缩体积，浓度增大，化学反应速率增大';
+  if (st === 'injecting')    displayText = '充入反应物，浓度增大，化学反应速率增大';
+  if (st === 'injectInert')  displayText = '恒容充入无关气体，反应物浓度不变，化学反应速率不变';
+  if (st === 'injectInertCP') displayText = '恒压充入无关气体，容器总体积增大，反应物浓度减小，化学反应速率减小';
+  if (st === 'injecting') {
+    injectMolecules(ANIM.injectCount, PAL.molecule, PAL.moleculeNew);
+  }
+  if (st === 'injectInert' || st === 'injectInertCP') {
+    injectMolecules(ANIM.injectCount, PAL.moleculeInert, PAL.inertNew);
+  }
+}
+
+function updateState(dt) {
+  timer += dt;
+  switch (state) {
+    case 'compressing':
+      if (timer >= ANIM.compressT) enterState('holding');
+      break;
+    case 'holding':
+      if (timer >= ANIM.holdT) enterState('releasing');
+      break;
+    case 'releasing':
+      if (timer >= ANIM.releaseT) enterState('idle');
+      break;
+    case 'injecting':
+    case 'injectInert':
+      if (timer >= ANIM.injectT) enterState('idle');
+      break;
+    case 'injectInertCP':
+      if (timer >= ANIM.injectT && targetTextAlpha === 1) {
+        targetTextAlpha = 0;
+      }
+      break;
+  }
+}
+
+// ── Easing ──────────────────────────────────────────────
+function easeInOut(t) {
+  return t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
+}
+
+// ── Update helpers ──────────────────────────────────────
+function lerpPiston(dt) {
+  const target = targetPistonY(state);
+  const speed = 10;
+  pistonY += (target - pistonY) * Math.min(speed * dt, 1);
+}
+
+function lerpValues(dt) {
+  const spd = 7;
+  speedMul += (targetSpeedMul - speedMul) * Math.min(spd * dt, 1);
+  textAlpha += (targetTextAlpha - textAlpha) * Math.min(spd * dt, 1);
+}
+
+// ── Molecule update ─────────────────────────────────────
+function updateMolecules(dt) {
+  const topBound = pistonY + PISTON_SPEC.barH;
+  const minX = CYL.left + MOL.radius;
+  const maxX = CYL.right - MOL.radius;
+  const minY = topBound + MOL.radius;
+  const maxY = CYL.bottom - MOL.radius;
+
+  for (const m of molecules) {
+    // Brownian jitter — scales with speedMul
+    const j = MOL.jitter * speedMul * dt;
+    m.vx += (Math.random() - 0.5) * j;
+    m.vy += (Math.random() - 0.5) * j;
+
+    // Keep speed in range
+    const spd = Math.sqrt(m.vx * m.vx + m.vy * m.vy);
+    const lo = MOL.speedMin * speedMul;
+    const hi = MOL.speedMax * speedMul;
+    if (spd > hi)       { m.vx *= 0.97; m.vy *= 0.97; }
+    else if (spd < lo && spd > 0.001) { m.vx *= 1.03; m.vy *= 1.03; }
+
+    // Move
+    m.x += m.vx * dt;
+    m.y += m.vy * dt;
+
+    // Bounce walls
+    if (m.x < minX) { m.x = minX; m.vx = Math.abs(m.vx); }
+    if (m.x > maxX) { m.x = maxX; m.vx = -Math.abs(m.vx); }
+    if (m.y < minY) { m.y = minY; m.vy = Math.abs(m.vy); }
+    if (m.y > maxY) { m.y = maxY; m.vy = -Math.abs(m.vy); }
+
+    // Fade highlight
+    if (m.highlight > 0.001) {
+      m.highlight += (0 - m.highlight) * Math.min(0.35 * dt, 1);
+    }
+  }
+}
+
+// ── Draw ────────────────────────────────────────────────
+function drawCylinder() {
+  const { left, right, top, bottom, wall } = CYL;
+
+  // Inner fill
+  ctx.fillStyle = PAL.cylinderBg;
+  ctx.fillRect(left, top, right - left, bottom - top);
+
+  // Walls
+  ctx.fillStyle = PAL.cylinder;
+  ctx.fillRect(left - wall, top - wall, wall, bottom - top + wall);        // left
+  ctx.fillRect(right, top - wall, wall, bottom - top + wall);              // right
+  ctx.fillRect(left - wall, bottom, right - left + wall * 2, wall);        // floor
+
+  // Floor platform
+  ctx.fillStyle = PAL.platform;
+  ctx.fillRect(left - wall - 10, bottom + wall, right - left + wall * 2 + 20, 6);
+
+  // Volume tick marks — inside left wall
+  const idleY = CYL.top + (CYL.bottom - CYL.top) / 3;
+  const tickCount = 8;
+  ctx.strokeStyle = PAL.tick;
+  ctx.lineWidth = 1;
+  for (let i = 0; i < tickCount; i++) {
+    const y = idleY + (CYL.bottom - idleY) * (i / (tickCount - 1));
+    ctx.beginPath();
+    ctx.moveTo(left + 2, y);
+    ctx.lineTo(left + 16, y);
+    ctx.stroke();
+  }
+}
+
+function drawMolecules() {
+  for (const m of molecules) {
+    // Subtle glow
+    ctx.fillStyle = PAL.moleculeGlow;
+    ctx.beginPath();
+    ctx.arc(m.x, m.y, MOL.radius * 2.2, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Core — lerp from highlight color to permanent color
+    if (m.highlight > 0.01) {
+      ctx.fillStyle = lerpColor(m.color, m.highlightColor, m.highlight);
+    } else {
+      ctx.fillStyle = m.color;
+    }
+    ctx.beginPath();
+    ctx.arc(m.x, m.y, MOL.radius, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+function drawPiston(pY) {
+  const { left, right } = CYL;
+
+  // Piston bar
+  ctx.fillStyle = PAL.pistonBar;
+  ctx.fillRect(left - 2, pY, right - left + 4, PISTON_SPEC.barH);
+
+  // Rod
+  const rodX = (left + right) / 2 - PISTON_SPEC.rodW / 2;
+  ctx.fillStyle = PAL.pistonRod;
+  ctx.fillRect(rodX, PISTON_SPEC.rodTop, PISTON_SPEC.rodW, pY - PISTON_SPEC.rodTop);
+
+  // Circular grip
+  const gripCX = (left + right) / 2;
+  const gripCY = PISTON_SPEC.rodTop;
+  ctx.fillStyle = PAL.pistonGrip;
+  ctx.beginPath();
+  ctx.arc(gripCX, gripCY, PISTON_SPEC.gripR, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#fff';
+  ctx.beginPath();
+  ctx.arc(gripCX, gripCY, PISTON_SPEC.gripR * 0.4, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Lock pin — visible when injecting, drawn last to stay on top
+  if (state === 'injecting' || state === 'injectInert') {
+    const pinCX = (left + right) / 2;
+    const pinY = 58;
+    const pinW = 40;
+    const pinH = 7;
+    ctx.fillStyle = '#d4453b';
+    ctx.fillRect(pinCX - pinW / 2, pinY - pinH / 2, pinW, pinH);
+    ctx.beginPath();
+    ctx.arc(pinCX - pinW / 2, pinY, 8, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(pinCX + pinW / 2, pinY, 8, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#d4453b';
+    ctx.font = '600 22px "PingFang SC", "Microsoft YaHei", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+    ctx.fillText('恒容 · 活塞锁定', pinCX, 2);
+  }
+}
+
+function drawText() {
+  if (textAlpha < 0.01 || !displayText) return;
+  ctx.save();
+  ctx.globalAlpha = textAlpha;
+  ctx.fillStyle = PAL.text;
+  ctx.font = '500 24px "PingFang SC", "Microsoft YaHei", "Hiragino Sans GB", sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText(displayText, canvas.width / 2, CYL.bottom + 50);
+  ctx.restore();
+}
+
+function drawScene() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  drawCylinder();
+  drawMolecules();
+  drawPiston(pistonY);
+  drawText();
+}
+
+// ── Loop ────────────────────────────────────────────────
+let lastT = performance.now();
+
+function loop(ts) {
+  const dt = Math.min((ts - lastT) / 1000, 0.1);
+  lastT = ts;
+
+  updateState(dt);
+  lerpPiston(dt);
+  lerpValues(dt);
+  updateMolecules(dt);
+  drawScene();
+
+  requestAnimationFrame(loop);
+}
+
+// ── Button ──────────────────────────────────────────────
+document.getElementById('btnPressure').addEventListener('click', () => {
+  enterState('compressing');
+});
+
+document.getElementById('btnInject').addEventListener('click', () => {
+  enterState('injecting');
+});
+
+document.getElementById('btnInert').addEventListener('click', () => {
+  enterState('injectInert');
+});
+
+document.getElementById('btnInertCP').addEventListener('click', () => {
+  enterState('injectInertCP');
+});
+
+document.getElementById('btnReset').addEventListener('click', () => {
+  molecules.length = 0;
+  spawnMolecules();
+  enterState('idle');
+});
+
+requestAnimationFrame(loop);
+</script>
+
+</body>
+</html>
