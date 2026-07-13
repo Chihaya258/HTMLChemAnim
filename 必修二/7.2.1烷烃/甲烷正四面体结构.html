@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>甲烷正四面体结构 — CH₄</title>
+<style>
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    background: #f0f2f5;
+    font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
+  }
+  .card {
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+    padding: 24px;
+  }
+  canvas { display: block; border-radius: 8px; cursor: grab; width: 1280px; height: 720px; }
+  canvas:active { cursor: grabbing; }
+  .btn-group {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .btn {
+    padding: 14px 28px;
+    border: 2px solid transparent;
+    border-radius: 8px;
+    background: #1976d2;
+    color: #fff;
+    font-size: 28px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.25s;
+    white-space: nowrap;
+  }
+  .btn:hover { background: #1565c0; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(21,101,192,0.3); }
+  .btn.active { background: #c62828; border-color: #b71c1c; box-shadow: 0 4px 12px rgba(198,40,40,0.3); }
+  .info-bar {
+    margin-top: 12px;
+    padding: 10px 20px;
+    background: #f5f8ff;
+    border-radius: 8px;
+    font-size: 28px;
+    color: #555;
+    text-align: center;
+    min-height: 42px;
+    line-height: 1.5;
+  }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="btn-group">
+    <button class="btn" id="btnDefault" onclick="showDefault()">默认结构</button>
+    <button class="btn" id="btnMode1" onclick="showMode1()">① 三H共面 · 第四键垂直</button>
+    <button class="btn" id="btnMode2" onclick="showMode2()">② 双V形平面垂直</button>
+  </div>
+  <canvas id="canvas3d" width="1280" height="720"></canvas>
+  <div class="info-bar" id="infoBar">鼠标拖拽旋转 · 滚轮缩放</div>
+</div>
+
+<!-- Three.js CDN (ES Module) -->
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+// ── Canvas + 渲染器初始化 ──────────────────────────────
+const canvas = document.getElementById('canvas3d');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
+renderer.setSize(1280, 720);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setClearColor(0xf5f8ff);
+renderer.shadowMap.enabled = false;
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(40, 1280 / 720, 0.1, 100);
+camera.position.set(5.5, 4, 6.5);
+camera.lookAt(0, 0, 0);
+
+// ── OrbitControls（鼠标拖拽旋转）──────────────────────
+const controls = new OrbitControls(camera, canvas);
+controls.enableDamping = true;
+controls.dampingFactor = 0.08;
+controls.enablePan = false;
+controls.minDistance = 4;
+controls.maxDistance = 15;
+controls.autoRotate = false;
+
+// ── 光照 ──────────────────────────────────────────────
+scene.add(new THREE.AmbientLight(0xffffff, 0.55));
+const dirLight = new THREE.DirectionalLight(0xffffff, 0.75);
+dirLight.position.set(6, 10, 8);
+scene.add(dirLight);
+const fillLight = new THREE.DirectionalLight(0xffffff, 0.25);
+fillLight.position.set(-4, -2, -6);
+scene.add(fillLight);
+
+// ── 正四面体顶点坐标 ──────────────────────────────────
+// C 在原点，4个 H 在正四面体顶点，C-H 键长 = CH_LEN
+const CH_LEN = 1.8;
+const tetraVerts = [
+  new THREE.Vector3(0,  CH_LEN, 0),                                                  // H1 顶部
+  new THREE.Vector3(0, -CH_LEN / 3, CH_LEN * Math.sqrt(8 / 9)),                     // H2 底部前
+  new THREE.Vector3(-CH_LEN * Math.sqrt(2 / 3), -CH_LEN / 3, -CH_LEN * Math.sqrt(2 / 9)), // H3 底部左后
+  new THREE.Vector3( CH_LEN * Math.sqrt(2 / 3), -CH_LEN / 3, -CH_LEN * Math.sqrt(2 / 9)), // H4 底部右后
+];
+
+// ── 原子球体（发光风格）───────────────────────────────
+function createAtom(pos, color, radius) {
+  const geo = new THREE.SphereGeometry(radius, 32, 32);
+  const mat = new THREE.MeshPhongMaterial({
+    color: color,
+    emissive: color,
+    emissiveIntensity: 0.3,
+    shininess: 60,
+    transparent: true,
+    opacity: 0.92,
+  });
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.position.copy(pos);
+  return mesh;
+}
+
+// C 原子（深灰）
+const cAtom = createAtom(new THREE.Vector3(0, 0, 0), 0x555555, 0.45);
+scene.add(cAtom);
+
+// H 原子（白色）
+const hAtoms = tetraVerts.map(v => {
+  const h = createAtom(v, 0xffffff, 0.35);
+  scene.add(h);
+  return h;
+});
+
+// ── 化学键（圆柱）─────────────────────────────────────
+function createBond(start, end, color) {
+  color = color || 0xbbbbbb;
+  const dir = new THREE.Vector3().subVectors(end, start);
+  const len = dir.length();
+  const geo = new THREE.CylinderGeometry(0.08, 0.08, len, 8);
+  const mat = new THREE.MeshPhongMaterial({
+    color: color,
+    emissive: color,
+    emissiveIntensity: 0.12,
+    shininess: 30,
+  });
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.position.copy(start).add(end).multiplyScalar(0.5);
+  mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir.clone().normalize());
+  return mesh;
+}
+
+const bonds = tetraVerts.map(v => {
+  const b = createBond(new THREE.Vector3(0, 0, 0), v);
+  scene.add(b);
+  return b;
+});
+
+// ── 演示辅助对象组 ────────────────────────────────────
+const demoGroup = new THREE.Group();
+scene.add(demoGroup);
+
+let currentMode = 'default';
+
+// ── 模式切换 ──────────────────────────────────────────
+function clearDemo() {
+  while (demoGroup.children.length) {
+    const child = demoGroup.children[0];
+    if (child.geometry) child.geometry.dispose();
+    if (child.material) child.material.dispose();
+    demoGroup.remove(child);
+  }
+  // 恢复所有键的颜色
+  bonds.forEach(b => {
+    b.material.color.set(0xbbbbbb);
+    b.material.emissive.set(0xbbbbbb);
+  });
+  hAtoms.forEach(h => {
+    h.material.color.set(0xffffff);
+    h.material.emissive.set(0xffffff);
+  });
+  cAtom.material.color.set(0x555555);
+  cAtom.material.emissive.set(0x555555);
+  // 恢复信息栏
+  document.getElementById('infoBar').textContent = '鼠标拖拽旋转 · 滚轮缩放';
+}
+
+function showDefault() {
+  currentMode = 'default';
+  clearDemo();
+  updateBtnState();
+}
+
+function showMode1() {
+  currentMode = 'mode1';
+  clearDemo();
+
+  // 半透明平面连接 H1, H2, H3
+  const planeGeo = new THREE.BufferGeometry();
+  const vertices = new Float32Array([
+    ...tetraVerts[0].toArray(),
+    ...tetraVerts[1].toArray(),
+    ...tetraVerts[2].toArray(),
+  ]);
+  planeGeo.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
+  planeGeo.computeVertexNormals();
+  const planeMat = new THREE.MeshPhongMaterial({
+    color: 0x42a5f5,
+    transparent: true,
+    opacity: 0.22,
+    side: THREE.DoubleSide,
+    depthWrite: false,
+  });
+  const plane = new THREE.Mesh(planeGeo, planeMat);
+  demoGroup.add(plane);
+
+  // 平面边框线
+  const edgeGeo = new THREE.BufferGeometry().setFromPoints([
+    tetraVerts[0], tetraVerts[1], tetraVerts[2], tetraVerts[0]
+  ]);
+  const edgeMat = new THREE.LineBasicMaterial({ color: 0x42a5f5, linewidth: 2 });
+  demoGroup.add(new THREE.Line(edgeGeo, edgeMat));
+
+  // 第 4 根键（H4）和 H4 原子标红
+  bonds[3].material.color.set(0xc62828);
+  bonds[3].material.emissive.set(0xc62828);
+  hAtoms[3].material.color.set(0xc62828);
+  hAtoms[3].material.emissive.set(0xc62828);
+
+  // 垂直符号（从 H4 向平面作垂线）
+  // 计算平面法向量
+  const e1 = tetraVerts[1].clone().sub(tetraVerts[0]);
+  const e2 = tetraVerts[2].clone().sub(tetraVerts[0]);
+  const normal = new THREE.Vector3().crossVectors(e1, e2).normalize();
+  // 判断法向量方向（应指向 H4 一侧）
+  const toH4 = tetraVerts[3].clone().sub(tetraVerts[0]);
+  if (normal.dot(toH4) < 0) normal.negate();
+
+  // 垂足点（H4 在平面上的投影）
+  const planePoint = tetraVerts[0].clone(); // 平面上任意一点
+  const d = tetraVerts[3].clone().sub(planePoint).dot(normal);
+  const foot = tetraVerts[3].clone().sub(normal.clone().multiplyScalar(d));
+
+  // 垂线（虚线效果用短实线段模拟）
+  const lineGeo = new THREE.BufferGeometry().setFromPoints([foot, tetraVerts[3]]);
+  const lineMat = new THREE.LineDashedMaterial({ color: 0xc62828, dashSize: 0.12, gapSize: 0.08, linewidth: 2 });
+  const perpLine = new THREE.Line(lineGeo, lineMat);
+  perpLine.computeLineDistances();
+  demoGroup.add(perpLine);
+
+  // 直角符号（在垂足处）
+  const rightAngleSize = 0.2;
+  const up = normal.clone().normalize();
+  // 在平面内找两个正交方向
+  const inPlane1 = e1.clone().normalize();
+  const inPlane2 = new THREE.Vector3().crossVectors(up, inPlane1).normalize();
+  const raPts = [
+    foot.clone().add(inPlane1.clone().multiplyScalar(rightAngleSize)),
+    foot.clone().add(inPlane1.clone().multiplyScalar(rightAngleSize)).add(up.clone().multiplyScalar(rightAngleSize)),
+    foot.clone().add(up.clone().multiplyScalar(rightAngleSize)),
+  ];
+  const raGeo = new THREE.BufferGeometry().setFromPoints(raPts);
+  const raMat = new THREE.LineBasicMaterial({ color: 0xc62828 });
+  demoGroup.add(new THREE.Line(raGeo, raMat));
+
+  document.getElementById('infoBar').textContent = 'H₁、H₂、H₃ 共面（蓝色），第四个 C-H 键（红色）⊥ 该平面';
+  updateBtnState();
+}
+
+function showMode2() {
+  currentMode = 'mode2';
+  clearDemo();
+
+  // V形1: H1-C-H2 平面（蓝色）
+  const v1Geo = new THREE.BufferGeometry();
+  v1Geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array([
+    ...tetraVerts[0].toArray(), 0, 0, 0, ...tetraVerts[1].toArray(),
+  ]), 3));
+  v1Geo.computeVertexNormals();
+  const v1Mat = new THREE.MeshPhongMaterial({
+    color: 0x42a5f5, transparent: true, opacity: 0.2, side: THREE.DoubleSide, depthWrite: false,
+  });
+  demoGroup.add(new THREE.Mesh(v1Geo, v1Mat));
+
+  // V形1 边框
+  const e1Geo = new THREE.BufferGeometry().setFromPoints([tetraVerts[0], new THREE.Vector3(0,0,0), tetraVerts[1]]);
+  demoGroup.add(new THREE.Line(e1Geo, new THREE.LineBasicMaterial({ color: 0x42a5f5 })));
+
+  // V形2: H3-C-H4 平面（橙色）
+  const v2Geo = new THREE.BufferGeometry();
+  v2Geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array([
+    ...tetraVerts[2].toArray(), 0, 0, 0, ...tetraVerts[3].toArray(),
+  ]), 3));
+  v2Geo.computeVertexNormals();
+  const v2Mat = new THREE.MeshPhongMaterial({
+    color: 0xff7043, transparent: true, opacity: 0.2, side: THREE.DoubleSide, depthWrite: false,
+  });
+  demoGroup.add(new THREE.Mesh(v2Geo, v2Mat));
+
+  // V形2 边框
+  const e2Geo = new THREE.BufferGeometry().setFromPoints([tetraVerts[2], new THREE.Vector3(0,0,0), tetraVerts[3]]);
+  demoGroup.add(new THREE.Line(e2Geo, new THREE.LineBasicMaterial({ color: 0xff7043 })));
+
+  // 两个法向量箭头
+  const n1 = new THREE.Vector3().crossVectors(tetraVerts[0], tetraVerts[1]).normalize().multiplyScalar(1.5);
+  const n2 = new THREE.Vector3().crossVectors(tetraVerts[2], tetraVerts[3]).normalize().multiplyScalar(1.5);
+  demoGroup.add(new THREE.ArrowHelper(n1.clone().normalize(), new THREE.Vector3(0,0,0), 1.5, 0x1565c0, 0.2, 0.12));
+  demoGroup.add(new THREE.ArrowHelper(n2.clone().normalize(), new THREE.Vector3(0,0,0), 1.5, 0xe65100, 0.2, 0.12));
+
+  document.getElementById('infoBar').textContent = 'V形 H₁-C-H₂（蓝色平面）⊥ V形 H₃-C-H₄（橙色平面）';
+  updateBtnState();
+}
+
+function updateBtnState() {
+  document.getElementById('btnDefault').classList.toggle('active', currentMode === 'default');
+  document.getElementById('btnMode1').classList.toggle('active', currentMode === 'mode1');
+  document.getElementById('btnMode2').classList.toggle('active', currentMode === 'mode2');
+}
+
+// ── 动画循环 ──────────────────────────────────────────
+function animate() {
+  requestAnimationFrame(animate);
+  controls.update();
+  renderer.render(scene, camera);
+}
+animate();
+
+// ── 暴露到全局（供按钮 onclick 调用）─────────────────
+window.showDefault = showDefault;
+window.showMode1 = showMode1;
+window.showMode2 = showMode2;
+
+// ── 初始化 ────────────────────────────────────────────
+showDefault();
+</script>
+</body>
+</html>
