@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>离子反应 — 少量Ba(OH)₂ + 过量NaHSO₄</title>
+<style>
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    background: #f0f2f5;
+    font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
+  }
+  .card {
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+    padding: 24px;
+  }
+  canvas { display: block; border-radius: 8px; }
+</style>
+</head>
+<body>
+<div class="card">
+  <canvas id="c" width="1920" height="1080"></canvas>
+</div>
+<script>
+// ── Canvas 初始化 ──────────────────────────────────────
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+const W = 1920, H = 1080;
+
+// ── 颜色辅助函数 ──────────────────────────────────────
+function lighten(hex, pct) {
+  const r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16);
+  return `rgb(${Math.min(255,r+pct)},${Math.min(255,g+pct)},${Math.min(255,b+pct)})`;
+}
+function darken(hex, pct) {
+  const r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16);
+  return `rgb(${Math.max(0,r-pct)},${Math.max(0,g-pct)},${Math.max(0,b-pct)})`;
+}
+
+// ── 离子/分子定义 ──────────────────────────────────────
+const ION_DEFS = {
+  'Na⁺':   { color: '#7b1fa2', glow: 'rgba(123,31,162,0.25)', radius: 34, textColor: '#fff' },
+  'H⁺':    { color: '#1565c0', glow: 'rgba(21,101,192,0.25)', radius: 28, textColor: '#fff' },
+  'SO₄²⁻': { color: '#c62828', glow: 'rgba(198,40,40,0.25)', radius: 42, textColor: '#fff' },
+  'Ba²⁺':  { color: '#2e7d32', glow: 'rgba(46,125,50,0.25)', radius: 44, textColor: '#fff' },
+  'OH⁻':   { color: '#e65100', glow: 'rgba(230,81,0,0.25)', radius: 32, textColor: '#fff' },
+  'BaSO₄': { color: '#fafafa', glow: 'rgba(0,0,0,0.08)', radius: 48, textColor: '#333', stroke: '#bbb' },
+  'H₂O':   { color: '#00838f', glow: 'rgba(0,131,143,0.25)', radius: 30, textColor: '#fff' },
+};
+
+// ── 布朗运动参数 ──────────────────────────────────────
+const BROWNIAN = {
+  speedMin: 30,
+  speedMax: 80,
+  jitter: 200,
+};
+
+// ── 容器区域 ──────────────────────────────────────────
+const CONTAINER = {
+  x: 60, y: 180,
+  w: 1400, h: 580,
+};
+
+// ── 步骤定义 ──────────────────────────────────────────
+const STEPS = [
+  { name: 'NaHSO₄ 溶解', desc: 'NaHSO₄ → Na⁺ + H⁺ + SO₄²⁻' },
+  { name: 'Ba(OH)₂ 溶解', desc: 'Ba(OH)₂ → Ba²⁺ + 2OH⁻' },
+  { name: '离子反应',      desc: 'Ba²⁺+SO₄²⁻→BaSO₄↓, H⁺+OH⁻→H₂O' },
+];
+
+// ── Ion 类 ────────────────────────────────────────────
+class Ion {
+  constructor(label, x, y) {
+    const def = ION_DEFS[label];
+    this.label = label;
+    this.x = x;
+    this.y = y;
+    this.color = def.color;
+    this.radius = def.radius;
+    this.textColor = def.textColor;
+    this.stroke = def.stroke || null;
+    // 布朗运动
+    const a = Math.random() * Math.PI * 2;
+    const s = BROWNIAN.speedMin + Math.random() * (BROWNIAN.speedMax - BROWNIAN.speedMin);
+    this.vx = Math.cos(a) * s;
+    this.vy = Math.sin(a) * s;
+    // 动画状态
+    this.alpha = 1;
+    this.sinking = false;
+    this.targetX = null;
+    this.targetY = null;
+    this.merging = false;
+    this.settled = false;
+  }
+
+  update(dt) {
+    if (this.settled) return;
+    if (this.sinking) {
+      this.y += 60 * dt;
+      if (this.y + this.radius > CONTAINER.y + CONTAINER.h) {
+        this.y = CONTAINER.y + CONTAINER.h - this.radius;
+        this.sinking = false;
+        this.settled = true;
+      }
+      return;
+    }
+    if (this.merging && this.targetX !== null) {
+      this.x += (this.targetX - this.x) * Math.min(3 * dt, 1);
+      this.y += (this.targetY - this.y) * Math.min(3 * dt, 1);
+      return;
+    }
+    // 布朗运动
+    const j = BROWNIAN.jitter * dt;
+    this.vx += (Math.random() - 0.5) * j;
+    this.vy += (Math.random() - 0.5) * j;
+    const spd = Math.sqrt(this.vx * this.vx + this.vy * this.vy);
+    if (spd > BROWNIAN.speedMax) { this.vx *= 0.97; this.vy *= 0.97; }
+    if (spd < BROWNIAN.speedMin && spd > 0.01) { this.vx *= 1.03; this.vy *= 1.03; }
+    this.x += this.vx * dt;
+    this.y += this.vy * dt;
+    this.bounce();
+  }
+
+  bounce() {
+    const { x, y, w, h } = CONTAINER;
+    const r = this.radius;
+    if (this.x - r < x) { this.x = x + r; this.vx = Math.abs(this.vx); }
+    if (this.x + r > x + w) { this.x = x + w - r; this.vx = -Math.abs(this.vx); }
+    if (this.y - r < y) { this.y = y + r; this.vy = Math.abs(this.vy); }
+    if (this.y + r > y + h) { this.y = y + h - r; this.vy = -Math.abs(this.vy); }
+  }
+
+  draw(ctx) {
+    const def = ION_DEFS[this.label];
+    ctx.save();
+    ctx.globalAlpha = this.alpha;
+    // 外圈发光
+    ctx.shadowColor = def.glow;
+    ctx.shadowBlur = 20;
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+    // 径向渐变（中心亮、边缘暗）
+    const grad = ctx.createRadialGradient(
+      this.x - this.radius * 0.3, this.y - this.radius * 0.3, 0,
+      this.x, this.y, this.radius
+    );
+    grad.addColorStop(0, lighten(this.color, 40));
+    grad.addColorStop(0.7, this.color);
+    grad.addColorStop(1, darken(this.color, 30));
+    ctx.fillStyle = grad;
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    if (this.stroke) {
+      ctx.strokeStyle = this.stroke;
+      ctx.lineWidth = 3;
+      ctx.stroke();
+    }
+    // 化学式文字（带阴影防看不清）
+    ctx.fillStyle = this.textColor;
+    ctx.font = `bold ${Math.max(20, this.radius * 0.55)}px "PingFang SC", "Microsoft YaHei", sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.shadowColor = 'rgba(0,0,0,0.5)';
+    ctx.shadowBlur = 4;
+    ctx.fillText(this.label, this.x, this.y);
+    ctx.restore();
+  }
+}
+
+// ── 绘制函数 ──────────────────────────────────────────
+function drawTitle() {
+  const cx = CONTAINER.x + CONTAINER.w / 2;
+  ctx.fillStyle = '#888';
+  ctx.font = '18px "PingFang SC", "Microsoft YaHei", sans-serif';
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'top';
+  ctx.fillText('必修一 · 1.2.2', 40, 10);
+  ctx.fillStyle = '#333';
+  ctx.font = 'bold 44px "PingFang SC", "Microsoft YaHei", sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'top';
+  ctx.fillText('离子反应 — 少量Ba(OH)₂ + 过量NaHSO₄', cx, 30);
+}
+
+function drawContainer() {
+  const { x, y, w, h } = CONTAINER;
+  const r = 16;
+  ctx.fillStyle = '#f5f8ff';
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.arcTo(x + w, y, x + w, y + r, r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.arcTo(x + w, y + h, x + w - r, y + h, r);
+  ctx.lineTo(x + r, y + h);
+  ctx.arcTo(x, y + h, x, y + h - r, r);
+  ctx.lineTo(x, y + r);
+  ctx.arcTo(x, y, x + r, y, r);
+  ctx.fill();
+  ctx.strokeStyle = '#c0c8d4';
+  ctx.lineWidth = 3;
+  ctx.stroke();
+  ctx.strokeStyle = '#d8dee6';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(x + 6, y + 6, w - 12, h - 12);
+  ctx.fillStyle = 'rgba(255,255,255,0.6)';
+  ctx.fillRect(x + 10, y + 10, w - 20, 4);
+  ctx.strokeStyle = 'rgba(0,0,0,0.05)';
+  ctx.lineWidth = 1;
+  for (let gy = y + 60; gy < y + h; gy += 60) {
+    ctx.beginPath(); ctx.moveTo(x + 10, gy); ctx.lineTo(x + w - 10, gy); ctx.stroke();
+  }
+}
+
+function drawLegend() {
+  const startX = CONTAINER.x + CONTAINER.w + 40;
+  const startY = CONTAINER.y + 40;
+  const labels = ['Na⁺', 'H⁺', 'SO₄²⁻', 'Ba²⁺', 'OH⁻', 'BaSO₄', 'H₂O'];
+  ctx.font = 'bold 22px "PingFang SC", "Microsoft YaHei", sans-serif';
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'middle';
+  labels.forEach((label, i) => {
+    const def = ION_DEFS[label];
+    const cy = startY + i * 60;
+    // 发光小球
+    ctx.save();
+    ctx.shadowColor = def.glow;
+    ctx.shadowBlur = 10;
+    ctx.beginPath();
+    ctx.arc(startX + 20, cy, 16, 0, Math.PI * 2);
+    ctx.fillStyle = def.color;
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    if (def.stroke) {
+      ctx.strokeStyle = def.stroke;
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    }
+    ctx.restore();
+    ctx.fillStyle = '#333';
+    ctx.fillText(label, startX + 48, cy);
+  });
+}
+
+function drawStepText() {
+  const step = STEPS[currentStep];
+  const cx = CONTAINER.x + CONTAINER.w / 2;
+  const ty = CONTAINER.y - 60;
+  ctx.fillStyle = 'rgba(25,118,210,0.06)';
+  ctx.fillRect(cx - 420, ty - 36, 840, 90);
+  ctx.fillStyle = '#333';
+  ctx.font = 'bold 36px "PingFang SC", "Microsoft YaHei", sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(step.name, cx, ty);
+  ctx.font = '28px "PingFang SC", "Microsoft YaHei", sans-serif';
+  ctx.fillStyle = '#556';
+  ctx.fillText(step.desc, cx, ty + 44);
+}
+
+// ── 进度条 ────────────────────────────────────────────
+const PROGRESS = {
+  x: 100, y: CONTAINER.y + CONTAINER.h + 60,
+  w: 1720, h: 16,
+  dotR: 12,
+};
+
+// 步骤时长
+const STEP0_HOLD = 1.5;
+const STEP0_DISSOLVE = 2.0;
+const STEP1_HOLD = 1.5;
+const STEP1_DISSOLVE = 2.0;
+const STEP2_MERGE = 1.0;
+const STEP2_SINK = 4.0;
+
+let STEP_DURATIONS = [STEP0_HOLD + STEP0_DISSOLVE, STEP1_HOLD + STEP1_DISSOLVE, STEP2_MERGE + STEP2_SINK];
+let TOTAL_DURATION = STEP_DURATIONS[0] + STEP_DURATIONS[1] + STEP_DURATIONS[2];
+
+let totalElapsed = 0;
+let progressDisplay = 0;
+
+function drawProgressBar() {
+  const { x, y, w, h, dotR } = PROGRESS;
+  const ratio = Math.min(progressDisplay / TOTAL_DURATION, 1);
+  const barY = y + dotR;
+  // 轨道底色
+  ctx.fillStyle = '#e8e8e8';
+  ctx.fillRect(x, barY, w, h);
+  // 步骤分隔线（白色粗线 + 灰色描边）
+  let cumX = x;
+  for (let i = 0; i < 2; i++) {
+    cumX += (STEP_DURATIONS[i] / TOTAL_DURATION) * w;
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(cumX - 3, barY - 4, 6, h + 8);
+    ctx.fillStyle = '#999';
+    ctx.fillRect(cumX - 1.5, barY - 3, 3, h + 6);
+  }
+  // 已播放填充
+  const fillW = Math.max(h, w * ratio);
+  ctx.fillStyle = '#1976d2';
+  ctx.fillRect(x, barY, fillW, h);
+  // 滑块圆点
+  const dotX = x + w * ratio;
+  ctx.beginPath();
+  ctx.arc(dotX, barY + h / 2, dotR, 0, Math.PI * 2);
+  ctx.fillStyle = '#1976d2';
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(dotX, barY + h / 2, dotR * 0.45, 0, Math.PI * 2);
+  ctx.fillStyle = '#fff';
+  ctx.fill();
+  // 步骤名称标签
+  let cumW = 0;
+  for (let i = 0; i < 3; i++) {
+    const cx = x + (cumW + STEP_DURATIONS[i] / 2) / TOTAL_DURATION * w;
+    const active = i === currentStep;
+    ctx.fillStyle = active ? '#1976d2' : '#888';
+    ctx.font = `${active ? 'bold ' : ''}22px "PingFang SC", "Microsoft YaHei", sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+    ctx.fillText(STEPS[i].name, cx, barY + h + 10);
+    ctx.fillStyle = active ? '#1565c0' : '#aaa';
+    ctx.font = '18px "PingFang SC", "Microsoft YaHei", sans-serif';
+    ctx.fillText(STEPS[i].desc, cx, barY + h + 34);
+    cumW += STEP_DURATIONS[i];
+  }
+}
+
+function handleProgressClick(mx, my) {
+  const { x, y, w, h, dotR } = PROGRESS;
+  const barY = y + dotR;
+  if (mx >= x && mx <= x + w && my >= barY - 10 && my <= barY + h + 60) {
+    const ratio = (mx - x) / w;
+    let cumDur = 0;
+    for (let i = 0; i < 3; i++) {
+      cumDur += STEP_DURATIONS[i];
+      if (ratio <= cumDur / TOTAL_DURATION) {
+        if (i === currentStep + 1) advanceStep(i);
+        else goToStep(i);
+        return;
+      }
+    }
+  }
+}
+
+canvas.addEventListener('click', (e) => {
+  const rect = canvas.getBoundingClientRect();
+  const scaleX = W / rect.width;
+  const scaleY = H / rect.height;
+  const mx = (e.clientX - rect.left) * scaleX;
+  const my = (e.clientY - rect.top) * scaleY;
+  handleProgressClick(mx, my);
+});
+
+// ── 状态机 ────────────────────────────────────────────
+let currentStep = 0;
+let stepPhase = 'ready';
+let stepTimer = 0;
+let ions = [];
+
+// ── 步骤 0: NaHSO₄ 溶解 ─────────────────────────────
+function initStep0() {
+  const cx = CONTAINER.x + CONTAINER.w / 2;
+  const cy = CONTAINER.y + CONTAINER.h / 2;
+  // 5个NaHSO₄分子，每个电离出 Na⁺ + H⁺ + SO₄²⁻
+  for (let m = 0; m < 5; m++) {
+    const ox = (m - 2) * 220;
+    const na = new Ion('Na⁺', cx + ox - 50, cy - 30);
+    na.vx = 0; na.vy = 0;
+    const h = new Ion('H⁺', cx + ox + 50, cy - 30);
+    h.vx = 0; h.vy = 0;
+    const so4 = new Ion('SO₄²⁻', cx + ox, cy + 30);
+    so4.vx = 0; so4.vy = 0;
+    ions.push(na, h, so4);
+  }
+  stepPhase = 'compound';
+  stepTimer = 0;
+}
+
+function updateStep0(dt) {
+  stepTimer += dt;
+  if (stepPhase === 'compound' && stepTimer > STEP0_HOLD) {
+    stepPhase = 'dissolving';
+    stepTimer = 0;
+    ions.forEach(ion => {
+      if (ion.vx === 0 && ion.vy === 0) {
+        const a = Math.random() * Math.PI * 2;
+        const s = BROWNIAN.speedMin + Math.random() * (BROWNIAN.speedMax - BROWNIAN.speedMin);
+        ion.vx = Math.cos(a) * s * 2;
+        ion.vy = Math.sin(a) * s * 2;
+      }
+    });
+  }
+  if (stepPhase === 'dissolving' && stepTimer > STEP0_DISSOLVE) {
+    stepPhase = 'done';
+  }
+}
+
+// ── 步骤 1: Ba(OH)₂ 溶解 ────────────────────────────
+function initStep1() {
+  const cx = CONTAINER.x + CONTAINER.w / 2;
+  const cy = CONTAINER.y + CONTAINER.h / 2;
+  // 2个Ba(OH)₂分子
+  for (let m = 0; m < 2; m++) {
+    const ox = (m - 0.5) * 250;
+    const ba = new Ion('Ba²⁺', cx + ox, cy - 30);
+    ba.vx = 0; ba.vy = 0;
+    const oh1 = new Ion('OH⁻', cx + ox - 50, cy + 30);
+    oh1.vx = 0; oh1.vy = 0;
+    const oh2 = new Ion('OH⁻', cx + ox + 50, cy + 30);
+    oh2.vx = 0; oh2.vy = 0;
+    ions.push(ba, oh1, oh2);
+  }
+  stepPhase = 'compound';
+  stepTimer = 0;
+}
+
+function updateStep1(dt) {
+  stepTimer += dt;
+  if (stepPhase === 'compound' && stepTimer > STEP1_HOLD) {
+    stepPhase = 'dissolving';
+    stepTimer = 0;
+    ions.forEach(ion => {
+      if ((ion.label === 'Ba²⁺' || ion.label === 'OH⁻') && ion.vx === 0 && ion.vy === 0) {
+        const a = Math.random() * Math.PI * 2;
+        const s = BROWNIAN.speedMin + Math.random() * (BROWNIAN.speedMax - BROWNIAN.speedMin);
+        ion.vx = Math.cos(a) * s * 2;
+        ion.vy = Math.sin(a) * s * 2;
+      }
+    });
+  }
+  if (stepPhase === 'dissolving' && stepTimer > STEP1_DISSOLVE) {
+    stepPhase = 'done';
+  }
+}
+
+// ── 步骤 2: 离子反应 ────────────────────────────────
+function initStep2() {
+  ions = ions.filter(ion => ion.label !== 'BaSO₄');
+  stepPhase = 'pairing';
+  stepTimer = 0;
+
+  // 反应1：Ba²⁺ + SO₄²⁻ → BaSO₄↓
+  const baList = ions.filter(i => i.label === 'Ba²⁺');
+  const so4List = ions.filter(i => i.label === 'SO₄²⁻');
+  const baPairs = Math.min(baList.length, so4List.length);
+  for (let i = 0; i < baPairs; i++) {
+    const ba = baList[i];
+    const so4 = so4List[i];
+    const mx = (ba.x + so4.x) / 2;
+    const my = (ba.y + so4.y) / 2;
+    ba.targetX = mx; ba.targetY = my;
+    ba.merging = true;
+    so4.targetX = mx; so4.targetY = my;
+    so4.merging = true;
+  }
+
+  // 反应2：H⁺ + OH⁻ → H₂O
+  const hList = ions.filter(i => i.label === 'H⁺');
+  const ohList = ions.filter(i => i.label === 'OH⁻');
+  const hPairs = Math.min(hList.length, ohList.length);
+  for (let i = 0; i < hPairs; i++) {
+    const h = hList[i];
+    const oh = ohList[i];
+    const mx = (h.x + oh.x) / 2;
+    const my = (h.y + oh.y) / 2;
+    h.targetX = mx; h.targetY = my;
+    h.merging = true;
+    oh.targetX = mx; oh.targetY = my;
+    oh.merging = true;
+  }
+}
+
+function updateStep2(dt) {
+  stepTimer += dt;
+  if (stepPhase === 'pairing' && stepTimer > STEP2_MERGE) {
+    // 处理 Ba²⁺ + SO₄²⁻ → BaSO₄↓
+    const baList = ions.filter(i => i.label === 'Ba²⁺' && i.merging);
+    const so4List = ions.filter(i => i.label === 'SO₄²⁻' && i.merging);
+    const toRemove = new Set();
+    const toAdd = [];
+    for (let i = 0; i < baList.length; i++) {
+      const ba = baList[i];
+      const so4 = so4List[i];
+      toRemove.add(ba);
+      if (so4) {
+        toRemove.add(so4);
+        const mx = (ba.x + so4.x) / 2;
+        const my = (ba.y + so4.y) / 2;
+        const precipitate = new Ion('BaSO₄', mx, my);
+        precipitate.vx = 0; precipitate.vy = 0;
+        precipitate.sinking = true;
+        toAdd.push(precipitate);
+      }
+    }
+
+    // 处理 H⁺ + OH⁻ → H₂O
+    const hList = ions.filter(i => i.label === 'H⁺' && i.merging);
+    const ohList = ions.filter(i => i.label === 'OH⁻' && i.merging);
+    for (let i = 0; i < hList.length; i++) {
+      const h = hList[i];
+      const oh = ohList[i];
+      toRemove.add(h);
+      if (oh) {
+        toRemove.add(oh);
+        const mx = (h.x + oh.x) / 2;
+        const my = (h.y + oh.y) / 2;
+        const water = new Ion('H₂O', mx, my);
+        const a = Math.random() * Math.PI * 2;
+        const s = BROWNIAN.speedMin + Math.random() * (BROWNIAN.speedMax - BROWNIAN.speedMin);
+        water.vx = Math.cos(a) * s;
+        water.vy = Math.sin(a) * s;
+        toAdd.push(water);
+      }
+    }
+
+    ions = ions.filter(i => !toRemove.has(i));
+    ions.push(...toAdd);
+    stepPhase = 'sinking';
+    stepTimer = 0;
+  }
+  if (stepPhase === 'sinking' && stepTimer > STEP2_SINK) {
+    stepPhase = 'done';
+  }
+}
+
+// ── 步骤跳转 ─────────────────────────────────────────
+function addDissolvedIons(label, count, cx, cy) {
+  for (let i = 0; i < count; i++) {
+    const ion = new Ion(label, cx + (Math.random() - 0.5) * 600, cy + (Math.random() - 0.5) * 300);
+    const a = Math.random() * Math.PI * 2;
+    const s = BROWNIAN.speedMin + Math.random() * (BROWNIAN.speedMax - BROWNIAN.speedMin);
+    ion.vx = Math.cos(a) * s;
+    ion.vy = Math.sin(a) * s;
+    ions.push(ion);
+  }
+}
+
+function advanceStep(step) {
+  currentStep = step;
+  stepPhase = 'ready';
+  stepTimer = 0;
+  if (step === 1) initStep1();
+  else if (step === 2) initStep2();
+}
+
+function goToStep(step) {
+  currentStep = step;
+  stepPhase = 'ready';
+  stepTimer = 0;
+  let t = 0;
+  for (let i = 0; i < step; i++) t += STEP_DURATIONS[i];
+  totalElapsed = t;
+  progressDisplay = t;
+  ions = [];
+  const cx = CONTAINER.x + CONTAINER.w / 2;
+  const cy = CONTAINER.y + CONTAINER.h / 2;
+  if (step >= 1) {
+    addDissolvedIons('Na⁺', 5, cx, cy);
+    addDissolvedIons('H⁺', 5, cx, cy);
+    addDissolvedIons('SO₄²⁻', 5, cx, cy);
+  }
+  if (step >= 2) {
+    addDissolvedIons('Ba²⁺', 2, cx, cy);
+    addDissolvedIons('OH⁻', 4, cx, cy);
+  }
+  if (step === 0) {
+    initStep0();
+  } else if (step === 1) {
+    initStep1();
+  } else if (step === 2) {
+    initStep2();
+  }
+}
+
+// ── 主循环 ────────────────────────────────────────────
+function update(dt) {
+  totalElapsed += dt;
+  progressDisplay += (totalElapsed - progressDisplay) * Math.min(6 * dt, 1);
+  ions.forEach(ion => ion.update(dt));
+  if (currentStep === 0) updateStep0(dt);
+  else if (currentStep === 1) updateStep1(dt);
+  else if (currentStep === 2) updateStep2(dt);
+  if (stepPhase === 'done' && currentStep < 2) {
+    advanceStep(currentStep + 1);
+  }
+}
+
+function drawScene() {
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, W, H);
+  drawTitle();
+  drawContainer();
+  ions.forEach(ion => ion.draw(ctx));
+  drawStepText();
+  drawLegend();
+  drawProgressBar();
+  if (currentStep === 2 && stepPhase === 'done') {
+    ctx.fillStyle = '#2e7d32';
+    ctx.font = 'bold 32px "PingFang SC", "Microsoft YaHei", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('✓ 反应完成', CONTAINER.x + CONTAINER.w / 2, CONTAINER.y + CONTAINER.h / 2);
+    ctx.font = '24px "PingFang SC", "Microsoft YaHei", sans-serif';
+    ctx.fillStyle = '#555';
+    ctx.fillText('剩余: 5Na⁺ + 1H⁺ + 3SO₄²⁻ + 4H₂O + 2BaSO₄↓', CONTAINER.x + CONTAINER.w / 2, CONTAINER.y + CONTAINER.h / 2 + 50);
+  }
+}
+
+let lastT = performance.now();
+function loop(ts) {
+  const dt = Math.min((ts - lastT) / 1000, 0.1);
+  lastT = ts;
+  update(dt);
+  drawScene();
+  requestAnimationFrame(loop);
+}
+
+goToStep(0);
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>

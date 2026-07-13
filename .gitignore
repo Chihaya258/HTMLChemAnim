@@ -2,3 +2,7 @@ docs/
 
 .claude/
 .agents/
+
+# 排除所有 .md 文件，但保留根目录的 README.md
+*.md
+!README.md
