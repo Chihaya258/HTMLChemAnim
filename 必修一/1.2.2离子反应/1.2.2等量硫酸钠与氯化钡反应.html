@@ -330,8 +330,9 @@ function handleProgressClick(mx, my) {
     for (let i = 0; i < 3; i++) {
       cumDur += STEP_DURATIONS[i];
       if (ratio <= cumDur / TOTAL_DURATION) {
-        if (i === currentStep + 1) advanceStep(i);
-        else goToStep(i);
+        if (i === currentStep) return;  // 点击当前步骤无操作
+        if (i === currentStep + 1) advanceStep(i);  // 相邻下一步：保留已有离子
+        else goToStep(i);  // 非相邻：清空重建
         return;
       }
     }
@@ -505,6 +506,11 @@ function advanceStep(step) {
   currentStep = step;
   stepPhase = 'ready';
   stepTimer = 0;
+  // 同步进度条位置
+  let t = 0;
+  for (let i = 0; i < step; i++) t += STEP_DURATIONS[i];
+  totalElapsed = t;
+  progressDisplay = t;
   if (step === 1) initStep1();
   else if (step === 2) initStep2();
 }
@@ -546,7 +552,9 @@ function goToStep(step) {
 function update(dt) {
   // 进度条：匀速推进 + 平滑追赶
   totalElapsed += dt;
-  progressDisplay += (totalElapsed - progressDisplay) * Math.min(6 * dt, 1);
+  const diff = totalElapsed - progressDisplay;
+  if (Math.abs(diff) < 0.05) progressDisplay = totalElapsed;  // 差值过小时直接同步
+  else progressDisplay += diff * Math.min(6 * dt, 1);
   ions.forEach(ion => ion.update(dt));
   if (currentStep === 0) updateStep0(dt);
   else if (currentStep === 1) updateStep1(dt);
