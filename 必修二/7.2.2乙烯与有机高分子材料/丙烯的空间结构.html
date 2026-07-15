@@ -1,0 +1,951 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>丙烯的空间结构 — CH₃CH=CH₂</title>
+<style>
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { min-height: 100%; }
+
+  body {
+    background: #eef2f6;
+    color: #263442;
+    font-family: "PingFang SC", "Microsoft YaHei", "Hiragino Sans GB", sans-serif;
+  }
+
+  .page {
+    width: min(1400px, calc(100% - 32px));
+    min-height: 100vh;
+    margin: 0 auto;
+    padding: 16px 0 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  /* ── 标题区 ── */
+  .hero { text-align: center; }
+
+  .eyebrow {
+    margin: 0 0 2px;
+    color: #1976d2;
+    font-size: clamp(15px, 1.05vw, 20px);
+    font-weight: 700;
+    letter-spacing: 0.15em;
+  }
+
+  h1 {
+    margin: 0;
+    font-family: "STKaiti", "KaiTi", "PingFang SC", serif;
+    font-size: clamp(30px, 2.4vw, 46px);
+    line-height: 1.1;
+    letter-spacing: 0.03em;
+  }
+
+  .subtitle {
+    margin: 4px 0 0;
+    color: #607080;
+    font-size: clamp(15px, 1.0vw, 19px);
+  }
+
+  /* ── 布局 ── */
+  .main-grid {
+    display: grid;
+    grid-template-columns: 1fr 280px;
+    gap: 18px;
+    align-items: start;
+  }
+
+  .card {
+    background: #fff;
+    border: 1px solid #d3dee6;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 4px 16px rgba(38, 52, 66, 0.07);
+  }
+
+  .canvas-wrap {
+    position: relative;
+    aspect-ratio: 16 / 9;
+    background: radial-gradient(ellipse at 50% 40%, #f6f9fd 0%, #e4ecf4 100%);
+  }
+
+  canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+    cursor: grab;
+    touch-action: none;
+  }
+  canvas:active { cursor: grabbing; }
+
+  .drag-tip {
+    position: absolute;
+    right: 10px;
+    bottom: 8px;
+    padding: 4px 12px;
+    border-radius: 999px;
+    background: rgba(255,255,255,0.85);
+    color: #607080;
+    font-size: clamp(13px, 0.8vw, 16px);
+    pointer-events: none;
+    user-select: none;
+  }
+
+  /* ── 侧栏 ── */
+  .sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .panel {
+    background: #fff;
+    border: 1px solid #d3dee6;
+    border-radius: 14px;
+    padding: 16px 18px;
+    box-shadow: 0 4px 16px rgba(38, 52, 66, 0.07);
+  }
+
+  .panel h3 {
+    margin: 0 0 10px;
+    font-size: 17px;
+    color: #426281;
+    letter-spacing: 0.04em;
+    border-bottom: 2px solid #e4ecf4;
+    padding-bottom: 6px;
+  }
+
+  .legend {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 16px;
+  }
+
+  .legend-sphere {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    border: 1px solid rgba(0,0,0,0.10);
+  }
+  .legend-sphere.sm { width: 20px; height: 20px; }
+
+  /* ── 滑块 ── */
+  .slider-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .slider-group label {
+    font-size: 15px;
+    font-weight: 600;
+    color: #34495e;
+  }
+
+  .slider-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  input[type="range"] {
+    flex: 1;
+    -webkit-appearance: none;
+    appearance: none;
+    height: 6px;
+    border-radius: 3px;
+    background: #c9d9e6;
+    outline: none;
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #1976d2;
+    cursor: pointer;
+    border: 2px solid #fff;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.18);
+  }
+  input[type="range"]::-moz-range-thumb {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #1976d2;
+    cursor: pointer;
+    border: 2px solid #fff;
+  }
+
+  .angle-display {
+    min-width: 52px;
+    font-size: 17px;
+    font-weight: 700;
+    color: #1976d2;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* ── 按钮 ── */
+  .btn-group {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .btn {
+    border: 0;
+    border-radius: 10px;
+    min-height: 44px;
+    padding: 10px 18px;
+    font: 600 16px/1.2 "PingFang SC", "Microsoft YaHei", sans-serif;
+    cursor: pointer;
+    transition: transform 140ms ease, box-shadow 140ms ease, background 140ms ease;
+    text-align: center;
+  }
+  .btn:hover { transform: translateY(-1px); }
+  .btn:active { transform: translateY(0); }
+  .btn:focus-visible { outline: 3px solid rgba(25, 118, 210, 0.45); outline-offset: 2px; }
+
+  .btn-primary {
+    background: #1976d2;
+    color: #fff;
+    box-shadow: 0 4px 10px rgba(25, 118, 210, 0.2);
+  }
+  .btn-primary:hover { background: #1565c0; }
+
+  .btn-outline {
+    background: #fff;
+    color: #1976d2;
+    border: 2px solid #1976d2;
+  }
+  .btn-outline:hover { background: #f0f7ff; }
+
+  .btn-secondary {
+    background: #e4ecf4;
+    color: #263442;
+  }
+  .btn-secondary:hover { background: #d3dee6; }
+
+  .btn.active {
+    background: #1b5e20;
+    color: #fff;
+    border-color: #1b5e20;
+    box-shadow: 0 4px 10px rgba(27, 94, 32, 0.2);
+  }
+
+  .btn.active.btn-outline {
+    background: #e8f5e9;
+    color: #1b5e20;
+    border-color: #1b5e20;
+  }
+
+  .btn.active:hover { background: #2e7d32; }
+
+  /* ── 信息栏 ── */
+  .info-bar {
+    padding: 10px 16px;
+    background: #f5f8ff;
+    border-radius: 8px;
+    font-size: clamp(15px, 0.95vw, 18px);
+    color: #426281;
+    text-align: center;
+    min-height: 42px;
+    line-height: 1.5;
+    border: 1px solid #d3dee6;
+  }
+
+  /* ── 化学说明 ── */
+  .explanation {
+    font-size: clamp(15px, 0.95vw, 18px);
+    line-height: 1.7;
+    color: #34495e;
+  }
+
+  .explanation h2 {
+    font-size: clamp(18px, 1.1vw, 22px);
+    color: #263442;
+    margin: 0 0 6px;
+  }
+
+  .explanation ul {
+    margin: 6px 0 0 20px;
+  }
+
+  .explanation .formula {
+    font-family: "Cambria Math", "Times New Roman", serif;
+    font-style: italic;
+  }
+
+  /* ── 加载错误 ── */
+  .load-error {
+    display: none;
+    position: fixed;
+    inset: 50% auto auto 50%;
+    z-index: 20;
+    width: min(580px, calc(100% - 32px));
+    transform: translate(-50%, -50%);
+    padding: 28px;
+    border: 2px solid #c63d32;
+    border-radius: 14px;
+    background: #fff5f4;
+    color: #8c211a;
+    box-shadow: 0 12px 36px rgba(0,0,0,0.15);
+    text-align: center;
+    font-size: 20px;
+    line-height: 1.6;
+  }
+
+  .load-error button {
+    margin-top: 16px;
+    padding: 10px 28px;
+    border: 0;
+    border-radius: 8px;
+    background: #c63d32;
+    color: #fff;
+    font-size: 18px;
+    cursor: pointer;
+  }
+  .load-error button:hover { background: #a83228; }
+
+  .load-error .sub { font-size: 16px; color: #a5524a; margin-top: 6px; }
+
+  /* ── 响应式 ── */
+  @media (max-width: 860px) {
+    .main-grid {
+      grid-template-columns: 1fr;
+    }
+    .sidebar {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+    .canvas-wrap { aspect-ratio: 16 / 10; }
+  }
+
+  @media (max-width: 540px) {
+    .page { width: calc(100% - 16px); }
+    .sidebar { grid-template-columns: 1fr; }
+    .panel { padding: 12px 14px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+</style>
+</head>
+<body>
+<main class="page">
+  <header class="hero">
+    <p class="eyebrow">选择性必修三 · 烯烃</p>
+    <h1>丙烯的空间结构</h1>
+    <p class="subtitle">CH₃—CH=CH₂ · 碳碳双键所在的平面与甲基的旋转</p>
+  </header>
+
+  <div class="main-grid">
+    <!-- ─── 左侧：模型 ─── -->
+    <div class="card canvas-wrap" id="modelCard">
+      <canvas id="canvas3d" aria-label="三维丙烯分子模型，可拖动旋转">
+        您的浏览器不支持三维画布。下方文字列出了完整的结构描述。
+      </canvas>
+      <span class="drag-tip">拖动旋转 · 滚轮缩放</span>
+    </div>
+
+    <!-- ─── 右侧：侧栏 ─── -->
+    <aside class="sidebar">
+      <!-- 图例 -->
+      <div class="panel">
+        <h3>图例</h3>
+        <div class="legend">
+          <div class="legend-item">
+            <span class="legend-sphere" style="background: radial-gradient(circle at 35% 30%, #666, #3a3a3a);"></span>
+            碳（C）
+          </div>
+          <div class="legend-item">
+            <span class="legend-sphere sm" style="background: radial-gradient(circle at 35% 30%, #fff, #d4dce4);"></span>
+            氢（H）
+          </div>
+          <div class="legend-item" style="margin-top:2px;font-size:14px;color:#607080;">
+            <span style="display:flex;gap:4px;align-items:center;">
+              <span style="width:18px;height:4px;border-radius:2px;background:#999;"></span>
+              <span style="width:18px;height:4px;border-radius:2px;background:#999;position:relative;top:6px;"></span>
+            </span>
+            双键 / 单键
+          </div>
+        </div>
+      </div>
+
+      <!-- 滑块 -->
+      <div class="panel">
+        <h3>C—C 单键旋转</h3>
+        <div class="slider-group">
+          <div class="slider-row">
+            <input type="range" id="rotSlider" min="0" max="360" value="0" step="1"
+                   aria-label="碳碳单键旋转角度">
+            <span class="angle-display" id="angleDisplay">0°</span>
+          </div>
+          <button class="btn btn-secondary" id="resetRotBtn" type="button">重置为 0°</button>
+        </div>
+      </div>
+
+      <!-- 按钮 -->
+      <div class="panel">
+        <h3>共面分析</h3>
+        <div class="btn-group">
+          <button class="btn btn-outline" id="btnMin" type="button" aria-pressed="false">
+            ◆ 最少原子共面</button>
+          <button class="btn btn-outline" id="btnMax" type="button" aria-pressed="false">
+            ◆ 最多原子共面</button>
+          <button class="btn btn-secondary" id="btnClear" type="button">取消平面</button>
+        </div>
+      </div>
+
+      <!-- 状态 -->
+      <div class="info-bar" id="infoBar" aria-live="polite">
+        拖动旋转 · 滚轮缩放 · 滑块转动单键
+      </div>
+    </aside>
+  </div>
+
+  <!-- ─── 化学说明 ─── -->
+  <section class="card explanation">
+    <div style="padding: 18px 24px;">
+      <h2>结构解析</h2>
+      <p>丙烯分子（C₃H₆）包含一个 <span class="formula">C=C</span> 双键和一个 <span class="formula">C—C</span> 单键：</p>
+      <ul>
+        <li><strong>双键碳（C₁、C₂）</strong>为 sp² 杂化，键角 ≈ 120°，<strong>C₁、C₂、C₃ 以及连接在双键碳上的 3 个 H 始终处于同一平面</strong>（共 6 个原子）。</li>
+        <li><strong>甲基碳（C₃）</strong>为 sp³ 杂化，键角 ≈ 109.5°，可绕 <span class="formula">C₂—C₃</span> σ 键自由旋转。</li>
+        <li><strong>最多共面</strong>：将甲基的一个 C—H 键旋转至双键平面内，共 7 个原子共面。</li>
+        <li><strong>最少共面</strong>：甲基的 3 个 C—H 键均不在双键平面内，共 6 个原子共面。</li>
+        <li>双键中 σ 键沿轴方向、π 键垂直于平面，因此 <span class="formula">C₂—C₃</span> 单键旋转不会破坏双键的平面构型。</li>
+      </ul>
+    </div>
+  </section>
+</main>
+
+<!-- ─── 加载失败弹窗 ─── -->
+<div class="load-error" id="loadError" role="alert">
+  <div>三维模型加载失败。</div>
+  <div class="sub">此页面需要联网加载 Three.js 库。请检查网络连接后刷新。</div>
+  <button type="button" onclick="location.reload()">重新加载</button>
+</div>
+
+<!-- ─── Three.js CDN ─── -->
+<script>
+  window.__sceneReady = false;
+  setTimeout(function () {
+    if (!window.__sceneReady) document.getElementById('loadError').style.display = 'block';
+  }, 10000);
+</script>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+// ── 导入 ────────────────────────────────────────────────
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+// ══════════════════════════════════════════════════════════
+// 1. 丙烯分子坐标（sp² 平面 = xy 平面，z = 0）
+// ══════════════════════════════════════════════════════════
+
+const BOND_DD = 1.8;   // C=C 双键长度（缩放）
+const BOND_SS = 1.58;  // C-C 单键长度
+const BOND_CH = 0.85;  // C-H 键长度
+const R_C = 0.38;      // 碳球半径
+const R_H = 0.22;      // 氢球半径
+
+// 碳原子
+const C1 = new THREE.Vector3(0, 0, 0);
+const C2 = new THREE.Vector3(BOND_DD, 0, 0);
+const C3 = new THREE.Vector3(
+  BOND_DD + BOND_SS * 0.5,
+  BOND_SS * 0.8660254037844386,
+  0
+);
+
+// 双键碳上的氢（sp² 平面内）
+const H11 = new THREE.Vector3(-BOND_CH * 0.5, BOND_CH * 0.8660254037844386, 0);
+const H12 = new THREE.Vector3(-BOND_CH * 0.5, -BOND_CH * 0.8660254037844386, 0);
+const H21 = new THREE.Vector3(
+  BOND_DD + BOND_CH * 0.5,
+  -BOND_CH * 0.8660254037844386,
+  0
+);
+
+// 甲基旋转轴与正交基
+const methylAxis = new THREE.Vector3(0.5, 0.8660254037844386, 0).normalize();
+const mU = new THREE.Vector3(0.8660254037844386, -0.5, 0).normalize();
+const mV = new THREE.Vector3(0, 0, -1).normalize();
+
+const COS_TETRA = -1 / 3;
+const SIN_TETRA = 2 * Math.SQRT2 / 3;
+
+let currentAngle = 0; // 度
+
+function getMethylH(angleDeg) {
+  const a = angleDeg * Math.PI / 180;
+  const results = [];
+  for (let i = 0; i < 3; i++) {
+    const phi = a + i * 2 * Math.PI / 3;
+    const dir = new THREE.Vector3()
+      .addScaledVector(methylAxis, COS_TETRA)
+      .addScaledVector(mU, SIN_TETRA * Math.cos(phi))
+      .addScaledVector(mV, SIN_TETRA * Math.sin(phi));
+    const pos = C3.clone().addScaledVector(dir, BOND_CH);
+    results.push(pos);
+  }
+  return results;
+}
+
+// ══════════════════════════════════════════════════════════
+// 2. Three.js 场景
+// ══════════════════════════════════════════════════════════
+
+const canvas = document.getElementById('canvas3d');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setClearColor(0xf6f9fd);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(35, 1, 0.1, 50);
+camera.position.set(3.5, 2.5, 5.2);
+
+const controls = new OrbitControls(camera, canvas);
+controls.enableDamping = true;
+controls.dampingFactor = 0.08;
+controls.enablePan = false;
+controls.minDistance = 3;
+controls.maxDistance = 12;
+controls.target.set(1.2, 0.6, 0);
+
+// ── 光照 ──
+scene.add(new THREE.HemisphereLight(0xffffff, 0x7d9ab5, 1.4));
+const keyLight = new THREE.DirectionalLight(0xffffff, 2.0);
+keyLight.position.set(4, 7, 6);
+scene.add(keyLight);
+const rimLight = new THREE.DirectionalLight(0xb8e5ff, 0.9);
+rimLight.position.set(-5, 1, -4);
+scene.add(rimLight);
+
+// ── 网格辅助（便于感知平面） ──
+const gridHelper = new THREE.GridHelper(5, 10, 0xccd8e4, 0xccd8e4);
+gridHelper.position.set(1.2, -1.2, 0);
+scene.add(gridHelper);
+
+// ══════════════════════════════════════════════════════════
+// 3. 分子模型
+// ══════════════════════════════════════════════════════════
+
+// 共享几何体
+const geoCarbon = new THREE.SphereGeometry(R_C, 32, 28);
+const geoHydrogen = new THREE.SphereGeometry(R_H, 28, 24);
+
+// 材质
+function carbonMat(color, emissiveIntensity = 0.1) {
+  return new THREE.MeshPhongMaterial({
+    color, emissive: color, emissiveIntensity, shininess: 50,
+  });
+}
+function hydrogenMat() {
+  return new THREE.MeshPhongMaterial({
+    color: 0xfafcff, emissive: 0xfafcff, emissiveIntensity: 0.06,
+    shininess: 75, transparent: true, opacity: 0.92,
+  });
+}
+
+const molecule = new THREE.Group();
+scene.add(molecule);
+
+// 碳原子
+const matC1 = carbonMat(0x444444, 0.12);
+const matC2 = carbonMat(0x444444, 0.12);
+const matC3 = carbonMat(0x444444, 0.12);
+
+const c1Mesh = new THREE.Mesh(geoCarbon, matC1); c1Mesh.position.copy(C1);
+const c2Mesh = new THREE.Mesh(geoCarbon, matC2); c2Mesh.position.copy(C2);
+const c3Mesh = new THREE.Mesh(geoCarbon, matC3); c3Mesh.position.copy(C3);
+molecule.add(c1Mesh, c2Mesh, c3Mesh);
+
+// 双键碳上的氢
+function addH(pos) {
+  const m = new THREE.Mesh(geoHydrogen, hydrogenMat());
+  m.position.copy(pos);
+  molecule.add(m);
+  return m;
+}
+const h11 = addH(H11);
+const h12 = addH(H12);
+const h21 = addH(H21);
+
+// 甲基氢（动态）
+const methylHGroup = new THREE.Group();
+molecule.add(methylHGroup);
+let methylHAtoms = [];
+
+function updateMethyl(angleDeg) {
+  // 移除旧氢（不 dispose 共享几何体 geoHydrogen）
+  while (methylHGroup.children.length) {
+    const c = methylHGroup.children[0];
+    if (c.material) c.material.dispose();
+    methylHGroup.remove(c);
+  }
+  const poss = getMethylH(angleDeg);
+  methylHAtoms = poss.map(p => {
+    const m = new THREE.Mesh(geoHydrogen, hydrogenMat());
+    m.position.copy(p);
+    methylHGroup.add(m);
+    return m;
+  });
+  // 更新甲基碳上的单键
+  updateBond(C2, C3, 'single');
+  // 更新甲基 C-H 键
+  while (methylBondGroup.children.length) {
+    const c = methylBondGroup.children[0];
+    if (c.geometry) c.geometry.dispose();
+    if (c.material) c.material.dispose();
+    methylBondGroup.remove(c);
+  }
+  poss.forEach(p => {
+    methylBondGroup.add(createBondLine(C3, p, 0x999999, 0.055));
+  });
+}
+
+// ── 化学键 ──
+const bondGroup = new THREE.Group();
+molecule.add(bondGroup);
+const methylBondGroup = new THREE.Group();
+molecule.add(methylBondGroup);
+
+function createBondLine(start, end, color, radius) {
+  const dir = new THREE.Vector3().subVectors(end, start);
+  const len = dir.length();
+  const geo = new THREE.CylinderGeometry(radius, radius, len, 8);
+  const mat = new THREE.MeshPhongMaterial({
+    color, emissive: color, emissiveIntensity: 0.06, shininess: 30,
+  });
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.position.copy(start).add(end).multiplyScalar(0.5);
+  mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir.clone().normalize());
+  return mesh;
+}
+
+// C=C 双键：两根平行圆柱
+function createDoubleBond(start, end, color, radius) {
+  const dir = new THREE.Vector3().subVectors(end, start);
+  // 在 sp² 平面内找垂直于键的方向
+  const perp = new THREE.Vector3(0, 0, 1).cross(dir).normalize();
+  if (perp.length() < 0.01) perp.set(0, 1, 0);
+  perp.normalize();
+  const offset = 0.12;
+  const mid = start.clone().add(end).multiplyScalar(0.5);
+  const group = new THREE.Group();
+  [-1, 1].forEach(sign => {
+    const offsetVec = perp.clone().multiplyScalar(sign * offset);
+    const s = start.clone().add(offsetVec);
+    const e = end.clone().add(offsetVec);
+    group.add(createBondLine(s, e, color, radius));
+  });
+  return group;
+}
+
+// C-H 单键
+function addCH(start, end) {
+  bondGroup.add(createBondLine(start, end, 0x999999, 0.055));
+}
+
+// C-C 单键 + C=C 双键
+bondGroup.add(createDoubleBond(C1, C2, 0x777777, 0.065));
+bondGroup.add(createBondLine(C2, C3, 0x777777, 0.065));
+
+addCH(C1, H11);
+addCH(C1, H12);
+addCH(C2, H21);
+
+function updateBond(start, end, type) {
+  // 重建 C2-C3 单键（先移除旧的）
+  // 我们用 ID 标记 C2-C3 键，方便更新
+  // 简单做法：刷新甲基相关时重建整个 bondGroup 中的 C2-C3 键不可行
+  // 改为用独立的 singleBondMesh
+  if (!window.singleBondMesh) {
+    window.singleBondMesh = createBondLine(start, end, 0x777777, 0.065);
+    bondGroup.add(window.singleBondMesh);
+  } else {
+    // 更新位置
+    const dir = new THREE.Vector3().subVectors(end, start);
+    const len = dir.length();
+    window.singleBondMesh.geometry.dispose();
+    window.singleBondMesh.geometry = new THREE.CylinderGeometry(0.065, 0.065, len, 8);
+    window.singleBondMesh.position.copy(start).add(end).multiplyScalar(0.5);
+    window.singleBondMesh.quaternion.setFromUnitVectors(
+      new THREE.Vector3(0, 1, 0), dir.clone().normalize()
+    );
+  }
+}
+
+// 初始生成甲基
+updateMethyl(0);
+
+// ══════════════════════════════════════════════════════════
+// 4. 共面平面辅助
+// ══════════════════════════════════════════════════════════
+
+let planeGroup = new THREE.Group();
+scene.add(planeGroup);
+let currentPlaneMode = 'none'; // 'none' | 'min' | 'max'
+
+function buildConvexHull2D(points) {
+  // points: THREE.Vector3[] 在 xy 平面 (z≈0)
+  // Graham scan
+  const pts = points.map(p => ({ x: p.x, y: p.y, z: p.z }));
+  // 找最左下的点
+  let minIdx = 0;
+  for (let i = 1; i < pts.length; i++) {
+    if (pts[i].y < pts[minIdx].y || (pts[i].y === pts[minIdx].y && pts[i].x < pts[minIdx].x))
+      minIdx = i;
+  }
+  // 按极角排序
+  const origin = pts[minIdx];
+  const sorted = pts.filter((_, i) => i !== minIdx).sort((a, b) => {
+    const angleA = Math.atan2(a.y - origin.y, a.x - origin.x);
+    const angleB = Math.atan2(b.y - origin.y, b.x - origin.x);
+    if (angleA !== angleB) return angleA - angleB;
+    const distA = (a.x - origin.x) ** 2 + (a.y - origin.y) ** 2;
+    const distB = (b.x - origin.x) ** 2 + (b.y - origin.y) ** 2;
+    return distA - distB;
+  });
+  sorted.unshift(origin);
+
+  // Graham scan
+  const hull = [];
+  for (const p of sorted) {
+    while (hull.length >= 2) {
+      const a = hull[hull.length - 2];
+      const b = hull[hull.length - 1];
+      const cross = (b.x - a.x) * (p.y - a.y) - (b.y - a.y) * (p.x - a.x);
+      if (cross <= 0) hull.pop();
+      else break;
+    }
+    hull.push(p);
+  }
+  return hull;
+}
+
+function createPlaneFromHull(hull, color, label) {
+  if (hull.length < 3) return null;
+  const verts = [];
+  const indices = [];
+  hull.forEach(h => verts.push(h.x, h.y, 0));
+  // triangulate (fan from first vertex)
+  for (let i = 1; i < hull.length - 1; i++) {
+    indices.push(0, i, i + 1);
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(verts, 3));
+  geo.setIndex(indices);
+  geo.computeVertexNormals();
+
+  const mat = new THREE.MeshPhongMaterial({
+    color,
+    transparent: true,
+    opacity: 0.25,
+    side: THREE.DoubleSide,
+    depthWrite: false,
+  });
+  const mesh = new THREE.Mesh(geo, mat);
+  // 边框
+  const edgePts = hull.map(h => new THREE.Vector3(h.x, h.y, 0));
+  edgePts.push(edgePts[0].clone());
+  const edgeGeo = new THREE.BufferGeometry().setFromPoints(edgePts);
+  const edgeMat = new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0.5, linewidth: 1 });
+  const edgeLine = new THREE.Line(edgeGeo, edgeMat);
+
+  const group = new THREE.Group();
+  group.add(mesh);
+  group.add(edgeLine);
+  group.userData.label = label;
+  return group;
+}
+
+function clearPlane() {
+  while (planeGroup.children.length) {
+    const c = planeGroup.children[0];
+    if (c.geometry) c.geometry.dispose();
+    if (c.material) c.material.dispose();
+    planeGroup.remove(c);
+  }
+  currentPlaneMode = 'none';
+  // 恢复原子颜色
+  restoreAtomColors();
+  // 清除所有高亮
+  document.getElementById('btnMin').setAttribute('aria-pressed', 'false');
+  document.getElementById('btnMin').classList.remove('active');
+  document.getElementById('btnMax').setAttribute('aria-pressed', 'false');
+  document.getElementById('btnMax').classList.remove('active');
+}
+
+function restoreAtomColors() {
+  c1Mesh.material.color.set(0x444444);
+  c2Mesh.material.color.set(0x444444);
+  c3Mesh.material.color.set(0x444444);
+  c1Mesh.material.emissive.set(0x444444);
+  c2Mesh.material.emissive.set(0x444444);
+  c3Mesh.material.emissive.set(0x444444);
+  [h11, h12, h21].forEach(m => {
+    m.material.color.set(0xfafcff);
+    m.material.emissive.set(0xfafcff);
+  });
+  methylHAtoms.forEach(m => {
+    m.material.color.set(0xfafcff);
+    m.material.emissive.set(0xfafcff);
+  });
+}
+
+function highlightAtoms(meshes) {
+  meshes.forEach(m => {
+    m.material.color.set(0xff8f00);
+    m.material.emissive.set(0xff8f00);
+  });
+}
+
+function showMinPlane() {
+  clearPlane();
+  currentPlaneMode = 'min';
+  // 将甲基旋转到 90°（确保 3 个甲基 H 都不在双键平面内，使共面原子最少）
+  const slider = document.getElementById('rotSlider');
+  slider.value = 90;
+  currentAngle = 90;
+  document.getElementById('angleDisplay').textContent = '90°';
+  updateMethyl(90);
+
+  // 6 个原子始终在 sp² 平面
+  const pts = [C1, C2, C3, H11, H12, H21];
+  const hull = buildConvexHull2D(pts);
+  const planeObj = createPlaneFromHull(hull, 0x1976d2, '最少共面');
+  if (planeObj) planeGroup.add(planeObj);
+  highlightAtoms([c1Mesh, c2Mesh, c3Mesh, h11, h12, h21]);
+  document.getElementById('btnMin').setAttribute('aria-pressed', 'true');
+  document.getElementById('btnMin').classList.add('active');
+  document.getElementById('infoBar').textContent =
+    '最少原子共面：C₁、C₂、C₃ 及双键碳上的 3 个 H 共 6 原子始终在同一平面';
+}
+
+function showMaxPlane() {
+  clearPlane();
+  currentPlaneMode = 'max';
+  // 将甲基旋转到 0°（一个 H 在平面内）
+  const slider = document.getElementById('rotSlider');
+  slider.value = 0;
+  currentAngle = 0;
+  document.getElementById('angleDisplay').textContent = '0°';
+  updateMethyl(0);
+
+  const pts = [C1, C2, C3, H11, H12, H21];
+  const mPos = getMethylH(0);
+  pts.push(mPos[0]); // 第一个甲基 H 在平面内
+
+  const hull = buildConvexHull2D(pts);
+  const planeObj = createPlaneFromHull(hull, 0xe65100, '最多共面');
+  if (planeObj) planeGroup.add(planeObj);
+  highlightAtoms([c1Mesh, c2Mesh, c3Mesh, h11, h12, h21, methylHAtoms[0]]);
+  document.getElementById('btnMax').setAttribute('aria-pressed', 'true');
+  document.getElementById('btnMax').classList.add('active');
+  document.getElementById('infoBar').textContent =
+    '最多原子共面：将甲基 C—H 旋入双键平面，共 7 原子共面（C₁、C₂、C₃、H₁₁、H₁₂、H₂₁ 及一个甲基 H）';
+}
+
+// ══════════════════════════════════════════════════════════
+// 5. 交互控件
+// ══════════════════════════════════════════════════════════
+
+const slider = document.getElementById('rotSlider');
+const angleDisplay = document.getElementById('angleDisplay');
+const infoBar = document.getElementById('infoBar');
+
+slider.addEventListener('input', () => {
+  const deg = parseFloat(slider.value);
+  currentAngle = deg;
+  angleDisplay.textContent = deg + '°';
+  updateMethyl(deg);
+
+  // 如果平面模式打开，先清除
+  if (currentPlaneMode !== 'none') {
+    clearPlane();
+    infoBar.textContent = '拖动旋转 · 滚轮缩放 · 滑块转动单键';
+  }
+  infoBar.textContent = `C—C 单键旋转 ${Math.round(deg)}°`;
+});
+
+document.getElementById('resetRotBtn').addEventListener('click', () => {
+  slider.value = 0;
+  currentAngle = 0;
+  angleDisplay.textContent = '0°';
+  updateMethyl(0);
+  if (currentPlaneMode !== 'none') clearPlane();
+  infoBar.textContent = '拖动旋转 · 滚轮缩放 · 滑块转动单键';
+});
+
+document.getElementById('btnMin').addEventListener('click', showMinPlane);
+document.getElementById('btnMax').addEventListener('click', showMaxPlane);
+document.getElementById('btnClear').addEventListener('click', () => {
+  clearPlane();
+  infoBar.textContent = '拖动旋转 · 滚轮缩放 · 滑块转动单键';
+});
+
+// ══════════════════════════════════════════════════════════
+// 6. 响应式
+// ══════════════════════════════════════════════════════════
+
+function resizeRenderer() {
+  const rect = canvas.getBoundingClientRect();
+  const w = rect.width;
+  const h = rect.height;
+  if (w === 0 || h === 0) return;
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+  renderer.setSize(w, h, false);
+}
+
+const resizeObserver = new ResizeObserver(resizeRenderer);
+resizeObserver.observe(canvas.parentElement);
+resizeRenderer();
+
+// ══════════════════════════════════════════════════════════
+// 7. 动画循环
+// ══════════════════════════════════════════════════════════
+
+function animate() {
+  requestAnimationFrame(animate);
+  controls.update();
+  renderer.render(scene, camera);
+}
+animate();
+
+// ══════════════════════════════════════════════════════════
+// 8. 初始化完成
+// ══════════════════════════════════════════════════════════
+
+window.__sceneReady = true;
+</script>
+</body>
+</html>

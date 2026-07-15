@@ -1,0 +1,692 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>甲烷的二氯取代物</title>
+<style>
+  :root {
+    --ink: #17324d;
+    --muted: #54708a;
+    --paper: #f4f8fb;
+    --card: #ffffff;
+    --line: #c9d9e6;
+    --blue: #1469a8;
+    --blue-dark: #0d4f80;
+    --green: #159447;
+    --green-dark: #0c6b32;
+    --amber: #f2a51a;
+    --shadow: 0 12px 30px rgba(34, 76, 110, 0.12);
+  }
+
+  *, *::before, *::after { box-sizing: border-box; }
+
+  html, body { margin: 0; min-height: 100%; }
+
+  body {
+    background:
+      linear-gradient(rgba(20, 105, 168, 0.045) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(20, 105, 168, 0.045) 1px, transparent 1px),
+      var(--paper);
+    background-size: 32px 32px;
+    color: var(--ink);
+    font-family: "Microsoft YaHei", "PingFang SC", sans-serif;
+  }
+
+  .page {
+    width: min(1760px, calc(100% - 40px));
+    min-height: 100vh;
+    margin: 0 auto;
+    padding: 18px 0 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .hero {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    gap: 24px;
+  }
+
+  .hero-copy { text-align: center; }
+
+  .eyebrow {
+    margin: 0 0 2px;
+    color: var(--blue);
+    font-size: clamp(17px, 1.15vw, 22px);
+    font-weight: 800;
+    letter-spacing: 0.16em;
+  }
+
+  h1 {
+    margin: 0;
+    font-family: "STKaiti", "KaiTi", "Microsoft YaHei", serif;
+    font-size: clamp(34px, 2.6vw, 50px);
+    line-height: 1.05;
+    letter-spacing: 0.04em;
+  }
+
+  .subtitle {
+    margin: 5px 0 0;
+    color: var(--muted);
+    font-size: clamp(17px, 1.1vw, 21px);
+  }
+
+  .hero-rule {
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--line));
+  }
+
+  .hero-rule:last-child { transform: scaleX(-1); }
+
+  button {
+    border: 0;
+    border-radius: 10px;
+    min-height: 48px;
+    padding: 10px 24px;
+    font: 700 clamp(18px, 1.25vw, 24px) / 1.15 "Microsoft YaHei", sans-serif;
+    cursor: pointer;
+    transition: transform 160ms ease, box-shadow 160ms ease, background 160ms ease;
+  }
+
+  button:hover { transform: translateY(-2px); }
+  button:active { transform: translateY(0); }
+  button:focus-visible { outline: 4px solid rgba(242, 165, 26, 0.55); outline-offset: 3px; }
+
+  .reset-row { text-align: center; }
+
+  .reset-btn {
+    color: var(--blue-dark);
+    background: #fff;
+    border: 2px solid var(--blue);
+    box-shadow: 0 4px 12px rgba(20, 105, 168, 0.1);
+  }
+
+  .models {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 22px;
+  }
+
+  .model-card {
+    overflow: hidden;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    box-shadow: var(--shadow);
+  }
+
+  .card-head {
+    min-height: 60px;
+    padding: 10px 18px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 18px;
+    border-bottom: 1px solid var(--line);
+    background: linear-gradient(90deg, #edf6fc, #fff);
+  }
+
+  .card-head h2 {
+    margin: 0;
+    font-size: clamp(23px, 1.55vw, 30px);
+  }
+
+  .formula {
+    color: var(--blue-dark);
+    font-family: "Cambria Math", "Times New Roman", serif;
+    font-size: clamp(23px, 1.55vw, 30px);
+    font-weight: 700;
+  }
+
+  .canvas-wrap {
+    position: relative;
+    aspect-ratio: 16 / 7.7;
+    background: radial-gradient(circle at 50% 45%, #fff 0, #eef7fc 72%);
+  }
+
+  canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+    cursor: grab;
+    touch-action: none;
+  }
+
+  canvas:active { cursor: grabbing; }
+
+  .drag-tip {
+    position: absolute;
+    right: 12px;
+    bottom: 10px;
+    padding: 5px 10px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.86);
+    color: var(--muted);
+    font-size: clamp(14px, 0.9vw, 17px);
+    pointer-events: none;
+  }
+
+  .card-action {
+    padding: 11px 16px 14px;
+    text-align: center;
+    border-top: 1px solid var(--line);
+  }
+
+  .replace-btn {
+    width: min(560px, 92%);
+    color: #fff;
+    background: var(--blue);
+    box-shadow: 0 6px 15px rgba(20, 105, 168, 0.22);
+  }
+
+  .replace-btn.active { background: var(--green-dark); }
+
+  .align-row { text-align: center; }
+
+  .align-btn {
+    min-width: min(590px, 90vw);
+    color: #fff;
+    background: linear-gradient(90deg, var(--green-dark), var(--green));
+    box-shadow: 0 7px 18px rgba(21, 148, 71, 0.25);
+  }
+
+  .align-btn[disabled] { cursor: wait; opacity: 0.75; transform: none; }
+
+  .conclusion {
+    max-height: 0;
+    opacity: 0;
+    overflow: hidden;
+    padding: 0 26px;
+    border: 0 solid #83c99f;
+    border-left-width: 7px;
+    border-radius: 12px;
+    background: #eefaf2;
+    transition: max-height 360ms ease, opacity 260ms ease, padding 360ms ease;
+  }
+
+  .conclusion.show {
+    max-height: 170px;
+    opacity: 1;
+    padding: 12px 26px;
+    border-top-width: 1px;
+    border-right-width: 1px;
+    border-bottom-width: 1px;
+  }
+
+  .conclusion strong {
+    display: block;
+    color: var(--green-dark);
+    font-size: clamp(22px, 1.55vw, 30px);
+  }
+
+  .conclusion p {
+    margin: 4px 0 0;
+    color: #315e45;
+    font-size: clamp(16px, 1.05vw, 20px);
+    line-height: 1.45;
+  }
+
+  .load-error {
+    display: none;
+    position: fixed;
+    inset: 50% auto auto 50%;
+    z-index: 10;
+    width: min(680px, calc(100% - 40px));
+    transform: translate(-50%, -50%);
+    padding: 28px;
+    border: 2px solid #c63d32;
+    border-radius: 14px;
+    background: #fff5f4;
+    color: #8c211a;
+    box-shadow: var(--shadow);
+    text-align: center;
+    font-size: 22px;
+    line-height: 1.6;
+  }
+
+  @media (max-width: 900px) {
+    .page { width: min(100% - 20px, 760px); }
+    .hero { grid-template-columns: 1fr; }
+    .hero-rule { display: none; }
+    .models { grid-template-columns: 1fr; }
+    .canvas-wrap { aspect-ratio: 16 / 9; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { scroll-behavior: auto !important; transition-duration: 0.01ms !important; }
+  }
+</style>
+</head>
+<body>
+<main class="page">
+  <header class="hero">
+    <div class="hero-rule"></div>
+    <div class="hero-copy">
+      <p class="eyebrow">正四面体的空间旋转</p>
+      <h1>甲烷的二氯取代物</h1>
+      <p class="subtitle">比较不同编号的取代位置，观察分子能否通过旋转重合</p>
+    </div>
+    <div class="hero-rule"></div>
+  </header>
+
+  <div class="reset-row">
+    <button class="reset-btn" id="resetBtn" type="button">恢复为两个甲烷</button>
+  </div>
+
+  <section class="models" aria-label="两个甲烷分子模型">
+    <article class="model-card">
+      <div class="card-head">
+        <h2>左侧模型 · AB 位点</h2>
+        <span class="formula" id="leftFormula">CH₄</span>
+      </div>
+      <div class="canvas-wrap">
+        <canvas id="leftCanvas" aria-label="左侧可旋转甲烷模型"></canvas>
+        <span class="drag-tip">拖动旋转 · 滚轮缩放</span>
+      </div>
+      <div class="card-action">
+        <button class="replace-btn" id="leftReplaceBtn" type="button">将 A、B 位的 H 替换为 Cl</button>
+      </div>
+    </article>
+
+    <article class="model-card">
+      <div class="card-head">
+        <h2>右侧模型 · AC 位点</h2>
+        <span class="formula" id="rightFormula">CH₄</span>
+      </div>
+      <div class="canvas-wrap">
+        <canvas id="rightCanvas" aria-label="右侧可旋转甲烷模型"></canvas>
+        <span class="drag-tip">拖动旋转 · 滚轮缩放</span>
+      </div>
+      <div class="card-action">
+        <button class="replace-btn" id="rightReplaceBtn" type="button">将 A、C 位的 H 替换为 Cl</button>
+      </div>
+    </article>
+  </section>
+
+  <div class="align-row">
+    <button class="align-btn" id="alignBtn" type="button">旋转至相同空间构型</button>
+  </div>
+
+  <section class="conclusion" id="conclusion" aria-live="polite">
+    <strong>两种画法可以通过旋转完全重合：二氯甲烷只有一种二氯取代物。</strong>
+    <p>右侧 A、C 位分别转到左侧 A、B 位；其余位置同步对应。字母表示旋转前的编号，原子的空间构型并未改变。</p>
+  </section>
+</main>
+
+<div class="load-error" id="loadError" role="alert">
+  三维模型加载失败。此页面使用 Three.js 在线资源，请检查网络连接后刷新页面。
+</div>
+
+<script>
+  window.__moleculeReady = false;
+  window.setTimeout(function () {
+    if (!window.__moleculeReady) document.getElementById('loadError').style.display = 'block';
+  }, 8000);
+</script>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+const CH_LEN = 1.85;
+const SITES = ['A', 'B', 'C', 'D'];
+const DEFAULT_CAMERA = new THREE.Vector3(5.2, 3.6, 6.4);
+const ATOM = {
+  C: { radius: 0.46, color: 0x3f4b56 },
+  H: { radius: 0.31, color: 0xfafcff },
+  Cl: { radius: 0.57, color: 0x27a844 },
+};
+
+const tetraVerts = [
+  new THREE.Vector3(0, CH_LEN, 0),
+  new THREE.Vector3(0, -CH_LEN / 3, CH_LEN * Math.sqrt(8 / 9)),
+  new THREE.Vector3(-CH_LEN * Math.sqrt(2 / 3), -CH_LEN / 3, -CH_LEN * Math.sqrt(2 / 9)),
+  new THREE.Vector3(CH_LEN * Math.sqrt(2 / 3), -CH_LEN / 3, -CH_LEN * Math.sqrt(2 / 9)),
+];
+
+const state = {
+  leftReplaced: false,
+  rightReplaced: false,
+  alignment: null,
+};
+
+function createAtom(position, element) {
+  const spec = ATOM[element];
+  const geometry = new THREE.SphereGeometry(spec.radius, 36, 28);
+  const material = new THREE.MeshPhongMaterial({
+    color: spec.color,
+    emissive: spec.color,
+    emissiveIntensity: element === 'H' ? 0.08 : 0.16,
+    shininess: element === 'H' ? 80 : 55,
+  });
+  const mesh = new THREE.Mesh(geometry, material);
+  mesh.position.copy(position);
+  mesh.userData.element = element;
+  return mesh;
+}
+
+function replaceAtomGeometry(atom, element) {
+  atom.geometry.dispose();
+  atom.material.dispose();
+  const fresh = createAtom(atom.position, element);
+  atom.geometry = fresh.geometry;
+  atom.material = fresh.material;
+  atom.userData.element = element;
+}
+
+function createBond(end) {
+  const direction = end.clone();
+  const geometry = new THREE.CylinderGeometry(0.075, 0.075, direction.length(), 12);
+  const material = new THREE.MeshPhongMaterial({ color: 0x9aabb8, shininess: 35 });
+  const bond = new THREE.Mesh(geometry, material);
+  bond.position.copy(end).multiplyScalar(0.5);
+  bond.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), direction.normalize());
+  return bond;
+}
+
+function makeLabelTexture(element, site) {
+  const canvas = document.createElement('canvas');
+  canvas.width = 256;
+  canvas.height = 160;
+  const context = canvas.getContext('2d');
+  context.clearRect(0, 0, canvas.width, canvas.height);
+  context.textAlign = 'center';
+  context.textBaseline = 'middle';
+  context.lineJoin = 'round';
+
+  const mainSize = element === 'Cl' ? 82 : 94;
+  const mainX = element === 'Cl' ? 112 : 120;
+  context.font = `800 ${mainSize}px Arial, sans-serif`;
+  context.lineWidth = 13;
+  context.strokeStyle = 'rgba(255,255,255,0.96)';
+  context.strokeText(element, mainX, 86);
+  context.lineWidth = 5;
+  context.strokeStyle = '#17324d';
+  context.strokeText(element, mainX, 86);
+  context.fillStyle = element === 'Cl' ? '#0a5f2b' : '#17324d';
+  context.fillText(element, mainX, 86);
+
+  context.font = '800 42px Arial, sans-serif';
+  context.lineWidth = 9;
+  context.strokeStyle = 'rgba(255,255,255,0.98)';
+  context.strokeText(site, 199, 121);
+  context.lineWidth = 3;
+  context.strokeStyle = '#17324d';
+  context.strokeText(site, 199, 121);
+  context.fillStyle = '#f08a00';
+  context.fillText(site, 199, 121);
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.minFilter = THREE.LinearFilter;
+  return texture;
+}
+
+function createLabel(element, site) {
+  const texture = makeLabelTexture(element, site);
+  const material = new THREE.SpriteMaterial({
+    map: texture,
+    transparent: true,
+    depthTest: true,
+    depthWrite: false,
+    alphaTest: 0.16,
+  });
+  const sprite = new THREE.Sprite(material);
+  const width = element === 'Cl' ? 0.88 : 0.7;
+  sprite.scale.set(width, width * 0.625, 1);
+  sprite.userData.element = element;
+  return sprite;
+}
+
+function updateLabel(label, element, site) {
+  label.material.map.dispose();
+  label.material.map = makeLabelTexture(element, site);
+  label.material.needsUpdate = true;
+  const width = element === 'Cl' ? 0.88 : 0.7;
+  label.scale.set(width, width * 0.625, 1);
+  label.userData.element = element;
+}
+
+function createMoleculeView(canvas, onInteract) {
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setClearColor(0xf3f9fd);
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
+
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(38, 16 / 7.7, 0.1, 100);
+  camera.position.copy(DEFAULT_CAMERA);
+
+  const controls = new OrbitControls(camera, canvas);
+  controls.enableDamping = true;
+  controls.dampingFactor = 0.08;
+  controls.enablePan = false;
+  controls.minDistance = 4.8;
+  controls.maxDistance = 12;
+  controls.target.set(0, 0, 0);
+  controls.addEventListener('start', onInteract);
+  canvas.addEventListener('wheel', onInteract, { passive: true });
+
+  scene.add(new THREE.HemisphereLight(0xffffff, 0x7891a5, 1.8));
+  const keyLight = new THREE.DirectionalLight(0xffffff, 2.5);
+  keyLight.position.set(5, 8, 7);
+  scene.add(keyLight);
+  const rimLight = new THREE.DirectionalLight(0xb8e5ff, 1.1);
+  rimLight.position.set(-6, 2, -5);
+  scene.add(rimLight);
+
+  const molecule = new THREE.Group();
+  scene.add(molecule);
+  molecule.add(createAtom(new THREE.Vector3(), 'C'));
+
+  const atoms = [];
+  const labels = [];
+  tetraVerts.forEach((position, index) => {
+    molecule.add(createBond(position));
+    const atom = createAtom(position, 'H');
+    const label = createLabel('H', SITES[index]);
+    molecule.add(atom, label);
+    atoms.push(atom);
+    labels.push(label);
+  });
+
+  function setElements(chlorineSites) {
+    atoms.forEach((atom, index) => {
+      const element = chlorineSites.includes(index) ? 'Cl' : 'H';
+      if (atom.userData.element !== element) replaceAtomGeometry(atom, element);
+      if (labels[index].userData.element !== element) updateLabel(labels[index], element, SITES[index]);
+    });
+  }
+
+  function updateLabelPositions() {
+    atoms.forEach((atom, index) => {
+      const atomWorld = atom.getWorldPosition(new THREE.Vector3());
+      const towardCamera = camera.position.clone().sub(atomWorld).normalize();
+      const offset = ATOM[atom.userData.element].radius + 0.035;
+      const labelWorld = atomWorld.add(towardCamera.multiplyScalar(offset));
+      labels[index].position.copy(molecule.worldToLocal(labelWorld));
+    });
+  }
+
+  function resize() {
+    const width = Math.max(1, canvas.clientWidth);
+    const height = Math.max(1, canvas.clientHeight);
+    const pixelWidth = Math.floor(width * Math.min(window.devicePixelRatio, 2));
+    const pixelHeight = Math.floor(height * Math.min(window.devicePixelRatio, 2));
+    if (canvas.width !== pixelWidth || canvas.height !== pixelHeight) {
+      renderer.setSize(width, height, false);
+      camera.aspect = width / height;
+      camera.updateProjectionMatrix();
+    }
+  }
+
+  function render() {
+    resize();
+    controls.update();
+    molecule.updateMatrixWorld(true);
+    updateLabelPositions();
+    renderer.render(scene, camera);
+  }
+
+  return { renderer, scene, camera, controls, molecule, atoms, labels, setElements, render };
+}
+
+function hideConclusion() {
+  document.getElementById('conclusion').classList.remove('show');
+}
+
+function cancelAlignment() {
+  if (state.alignment) {
+    state.alignment = null;
+    document.getElementById('alignBtn').disabled = false;
+    document.getElementById('alignBtn').textContent = '旋转至相同空间构型';
+  }
+  hideConclusion();
+}
+
+const leftView = createMoleculeView(document.getElementById('leftCanvas'), cancelAlignment);
+const rightView = createMoleculeView(document.getElementById('rightCanvas'), cancelAlignment);
+
+function updateControls() {
+  const leftButton = document.getElementById('leftReplaceBtn');
+  const rightButton = document.getElementById('rightReplaceBtn');
+  leftButton.classList.toggle('active', state.leftReplaced);
+  rightButton.classList.toggle('active', state.rightReplaced);
+  leftButton.textContent = state.leftReplaced ? '左侧已完成：A、B 为 Cl' : '将 A、B 位的 H 替换为 Cl';
+  rightButton.textContent = state.rightReplaced ? '右侧已完成：A、C 为 Cl' : '将 A、C 位的 H 替换为 Cl';
+  document.getElementById('leftFormula').textContent = state.leftReplaced ? 'CH₂Cl₂' : 'CH₄';
+  document.getElementById('rightFormula').textContent = state.rightReplaced ? 'CH₂Cl₂' : 'CH₄';
+}
+
+function applyLeftSubstitution() {
+  cancelAlignment();
+  state.leftReplaced = true;
+  leftView.setElements([0, 1]);
+  updateControls();
+}
+
+function applyRightSubstitution() {
+  cancelAlignment();
+  state.rightReplaced = true;
+  rightView.setElements([0, 2]);
+  updateControls();
+}
+
+function basisFromPair(first, second) {
+  const x = first.clone().normalize();
+  const y = second.clone().sub(x.clone().multiplyScalar(second.dot(x))).normalize();
+  const z = new THREE.Vector3().crossVectors(x, y).normalize();
+  return new THREE.Matrix4().makeBasis(x, y, z);
+}
+
+function getPermutationQuaternion() {
+  const sourceBasis = basisFromPair(tetraVerts[0], tetraVerts[2]);
+  const targetBasis = basisFromPair(tetraVerts[0], tetraVerts[1]);
+  const rotation = targetBasis.clone().multiply(sourceBasis.clone().transpose());
+  return new THREE.Quaternion().setFromRotationMatrix(rotation).normalize();
+}
+
+const permutationQuaternion = getPermutationQuaternion();
+const identityQuaternion = new THREE.Quaternion();
+
+function snapshotView(view) {
+  return {
+    camera: view.camera.position.clone(),
+    molecule: view.molecule.quaternion.clone(),
+  };
+}
+
+function startAlignment() {
+  if (!state.leftReplaced) {
+    state.leftReplaced = true;
+    leftView.setElements([0, 1]);
+  }
+  if (!state.rightReplaced) {
+    state.rightReplaced = true;
+    rightView.setElements([0, 2]);
+  }
+  updateControls();
+  hideConclusion();
+
+  state.alignment = {
+    start: performance.now(),
+    duration: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 1 : 1450,
+    left: snapshotView(leftView),
+    right: snapshotView(rightView),
+  };
+  const button = document.getElementById('alignBtn');
+  button.disabled = true;
+  button.textContent = '正在旋转并比较…';
+}
+
+function easeInOutCubic(value) {
+  return value < 0.5 ? 4 * value * value * value : 1 - Math.pow(-2 * value + 2, 3) / 2;
+}
+
+function updateAlignment(now) {
+  if (!state.alignment) return;
+  const animation = state.alignment;
+  const rawProgress = Math.min(1, (now - animation.start) / animation.duration);
+  const progress = easeInOutCubic(rawProgress);
+
+  leftView.camera.position.lerpVectors(animation.left.camera, DEFAULT_CAMERA, progress);
+  rightView.camera.position.lerpVectors(animation.right.camera, DEFAULT_CAMERA, progress);
+  leftView.molecule.quaternion.slerpQuaternions(animation.left.molecule, identityQuaternion, progress);
+  rightView.molecule.quaternion.slerpQuaternions(animation.right.molecule, permutationQuaternion, progress);
+  leftView.controls.target.set(0, 0, 0);
+  rightView.controls.target.set(0, 0, 0);
+
+  if (rawProgress === 1) {
+    state.alignment = null;
+    const button = document.getElementById('alignBtn');
+    button.disabled = false;
+    button.textContent = '再次旋转至相同空间构型';
+    document.getElementById('conclusion').classList.add('show');
+  }
+}
+
+function resetAll() {
+  cancelAlignment();
+  state.leftReplaced = false;
+  state.rightReplaced = false;
+  leftView.setElements([]);
+  rightView.setElements([]);
+  [leftView, rightView].forEach(view => {
+    view.molecule.quaternion.identity();
+    view.camera.position.copy(DEFAULT_CAMERA);
+    view.controls.target.set(0, 0, 0);
+    view.controls.update();
+  });
+  document.getElementById('alignBtn').textContent = '旋转至相同空间构型';
+  updateControls();
+}
+
+document.getElementById('resetBtn').addEventListener('click', resetAll);
+document.getElementById('leftReplaceBtn').addEventListener('click', applyLeftSubstitution);
+document.getElementById('rightReplaceBtn').addEventListener('click', applyRightSubstitution);
+document.getElementById('alignBtn').addEventListener('click', startAlignment);
+
+function animate(now) {
+  requestAnimationFrame(animate);
+  updateAlignment(now);
+  leftView.render();
+  rightView.render();
+}
+
+window.__moleculeReady = true;
+document.getElementById('loadError').style.display = 'none';
+resetAll();
+requestAnimationFrame(animate);
+</script>
+</body>
+</html>

@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>乙烯的平面结构 — C₂H₄</title>
+<style>
+  :root {
+    --ink: #17324d;
+    --muted: #526d7f;
+    --paper: #eef5f8;
+    --card: #ffffff;
+    --line: #bfd1dc;
+    --blue: #1469a8;
+    --blue-dark: #0d4f80;
+    --cyan: #2f91ae;
+    --amber: #d98200;
+    --amber-soft: #fff4dc;
+    --shadow: 0 14px 34px rgba(31, 76, 104, 0.13);
+  }
+
+  *, *::before, *::after { box-sizing: border-box; }
+  html, body { margin: 0; min-height: 100%; }
+
+  body {
+    background:
+      linear-gradient(rgba(20, 105, 168, 0.05) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(20, 105, 168, 0.05) 1px, transparent 1px),
+      var(--paper);
+    background-size: 36px 36px;
+    color: var(--ink);
+    font-family: "Microsoft YaHei", "PingFang SC", sans-serif;
+  }
+
+  .page {
+    width: min(1760px, calc(100% - 40px));
+    min-height: 100vh;
+    margin: 0 auto;
+    padding: 18px 0 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .hero {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    gap: 26px;
+  }
+
+  .hero-rule {
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--line));
+  }
+
+  .hero-rule:last-child { transform: scaleX(-1); }
+  .hero-copy { text-align: center; }
+
+  .eyebrow {
+    margin: 0 0 2px;
+    color: var(--blue);
+    font-size: clamp(20px, 1.25vw, 24px);
+    font-weight: 800;
+    letter-spacing: 0.15em;
+  }
+
+  h1 {
+    margin: 0;
+    font-family: "STKaiti", "KaiTi", "Microsoft YaHei", serif;
+    font-size: clamp(40px, 3vw, 54px);
+    line-height: 1.08;
+    letter-spacing: 0.04em;
+  }
+
+  .subtitle {
+    margin: 5px 0 0;
+    color: var(--muted);
+    font-size: clamp(22px, 1.45vw, 28px);
+  }
+
+  .formula {
+    color: var(--blue-dark);
+    font-family: "Cambria Math", "Times New Roman", serif;
+    font-weight: 700;
+  }
+
+  .toolbar {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  button {
+    min-height: 52px;
+    padding: 11px 25px;
+    border: 2px solid var(--blue);
+    border-radius: 10px;
+    background: #fff;
+    color: var(--blue-dark);
+    font: 700 clamp(22px, 1.5vw, 28px) / 1.15 "Microsoft YaHei", sans-serif;
+    cursor: pointer;
+    transition: transform 160ms ease, box-shadow 160ms ease, color 160ms ease, background 160ms ease;
+  }
+
+  button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 7px 16px rgba(20, 105, 168, 0.18);
+  }
+
+  button:active { transform: translateY(0); }
+
+  button:focus-visible {
+    outline: 4px solid rgba(217, 130, 0, 0.48);
+    outline-offset: 3px;
+  }
+
+  button.active,
+  button[aria-pressed="true"] {
+    border-color: var(--blue-dark);
+    background: var(--blue);
+    color: #fff;
+  }
+
+  .stage {
+    min-height: 0;
+    flex: 1;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(330px, 27%);
+    overflow: hidden;
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    background: var(--card);
+    box-shadow: var(--shadow);
+  }
+
+  .viewer {
+    position: relative;
+    min-height: 520px;
+    background:
+      radial-gradient(circle at 46% 42%, #fff 0, #f3f9fc 55%, #e2f0f6 100%);
+  }
+
+  canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+    cursor: grab;
+    touch-action: none;
+  }
+
+  canvas:active { cursor: grabbing; }
+
+  .drag-tip {
+    position: absolute;
+    left: 18px;
+    bottom: 16px;
+    padding: 7px 14px;
+    border: 1px solid rgba(191, 209, 220, 0.9);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.9);
+    color: var(--muted);
+    font-size: clamp(18px, 1.15vw, 22px);
+    pointer-events: none;
+  }
+
+  .panel {
+    padding: 26px 28px;
+    border-left: 1px solid var(--line);
+    background: linear-gradient(180deg, #f8fcfe, #edf6fa);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 22px;
+  }
+
+  .panel h2 {
+    margin: 0;
+    color: var(--blue-dark);
+    font-size: clamp(28px, 1.8vw, 34px);
+  }
+
+  .facts {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: grid;
+    gap: 16px;
+  }
+
+  .facts li {
+    position: relative;
+    padding-left: 30px;
+    font-size: clamp(23px, 1.45vw, 28px);
+    line-height: 1.45;
+  }
+
+  .facts li::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0.55em;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: var(--cyan);
+    box-shadow: 0 0 0 5px rgba(47, 145, 174, 0.14);
+  }
+
+  .bond-note {
+    padding: 14px 16px;
+    border-left: 6px solid var(--amber);
+    border-radius: 8px;
+    background: var(--amber-soft);
+    font-size: clamp(21px, 1.35vw, 26px);
+    line-height: 1.45;
+  }
+
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px 20px;
+    color: var(--muted);
+    font-size: clamp(20px, 1.25vw, 24px);
+  }
+
+  .legend span { display: inline-flex; align-items: center; gap: 9px; }
+  .atom-key { width: 20px; height: 20px; border-radius: 50%; border: 2px solid #70818d; }
+  .atom-key.carbon { background: #354652; }
+  .atom-key.hydrogen { background: #fff; }
+
+  .status {
+    min-height: 56px;
+    padding: 10px 20px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.94);
+    color: var(--muted);
+    text-align: center;
+    font-size: clamp(22px, 1.45vw, 28px);
+    line-height: 1.35;
+  }
+
+  .load-error {
+    display: none;
+    position: fixed;
+    inset: 50% auto auto 50%;
+    z-index: 10;
+    width: min(720px, calc(100% - 40px));
+    transform: translate(-50%, -50%);
+    padding: 30px;
+    border: 2px solid #c63d32;
+    border-radius: 14px;
+    background: #fff5f4;
+    color: #8c211a;
+    box-shadow: var(--shadow);
+    text-align: center;
+    font-size: 26px;
+    line-height: 1.6;
+  }
+
+  @media (max-width: 1000px) {
+    .page { width: min(100% - 20px, 860px); }
+    .hero { grid-template-columns: 1fr; }
+    .hero-rule { display: none; }
+    .stage { grid-template-columns: 1fr; overflow: visible; }
+    .viewer { min-height: 56vw; max-height: 620px; }
+    .panel { border-left: 0; border-top: 1px solid var(--line); }
+  }
+
+  @media (max-height: 820px) and (min-width: 1001px) {
+    .page { padding-block: 10px; gap: 9px; }
+    .eyebrow { display: none; }
+    h1 { font-size: 38px; }
+    .subtitle { font-size: 21px; }
+    button { min-height: 46px; padding-block: 8px; font-size: 21px; }
+    .viewer { min-height: 420px; }
+    .panel { padding-block: 18px; gap: 13px; }
+    .facts { gap: 9px; }
+    .facts li, .bond-note { font-size: 20px; }
+    .status { min-height: 45px; padding-block: 6px; font-size: 20px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { transition-duration: 0.01ms !important; }
+  }
+</style>
+</head>
+<body>
+<main class="page">
+  <header class="hero">
+    <div class="hero-rule"></div>
+    <div class="hero-copy">
+      <p class="eyebrow">从侧面观察“共面”</p>
+      <h1>乙烯的平面结构</h1>
+      <p class="subtitle"><span class="formula">C₂H₄</span> · 拖动模型，验证六个原子是否在同一平面</p>
+    </div>
+    <div class="hero-rule"></div>
+  </header>
+
+  <nav class="toolbar" aria-label="模型显示控制">
+    <button id="defaultBtn" type="button">默认结构</button>
+    <button id="planeBtn" type="button" aria-pressed="false">显示分子平面</button>
+    <button id="angleBtn" type="button" aria-pressed="false">显示约 120°键角</button>
+    <button id="resetBtn" type="button">重置视角</button>
+  </nav>
+
+  <section class="stage" aria-label="乙烯三维结构与观察要点">
+    <div class="viewer">
+      <canvas id="canvas3d" aria-label="可旋转的乙烯平面分子三维模型"></canvas>
+      <span class="drag-tip">拖动旋转 · 滚轮或双指缩放</span>
+    </div>
+
+    <aside class="panel">
+      <h2>观察要点</h2>
+      <ul class="facts">
+        <li>2 个碳原子和 4 个氢原子<strong>共面</strong></li>
+        <li>每个碳原子采用 <strong>sp² 杂化</strong></li>
+        <li>碳原子周围的键角<strong>约为 120°</strong></li>
+      </ul>
+      <div class="bond-note"><strong>C=C 双键</strong>由 1 个 σ 键和 1 个 π 键组成；模型中的双线表示键级。</div>
+      <div class="legend" aria-label="原子颜色图例">
+        <span><i class="atom-key carbon"></i>碳原子 C</span>
+        <span><i class="atom-key hydrogen"></i>氢原子 H</span>
+      </div>
+    </aside>
+  </section>
+
+  <div class="status" id="status" aria-live="polite">拖动模型，从正面和侧面观察乙烯的平面结构。</div>
+</main>
+
+<div class="load-error" id="loadError" role="alert">
+  三维模型加载失败。此页面使用 Three.js 在线资源，请检查网络连接后刷新页面。
+</div>
+
+<script>
+  window.__ethyleneReady = false;
+  window.setTimeout(function () {
+    if (!window.__ethyleneReady) document.getElementById('loadError').style.display = 'block';
+  }, 8000);
+</script>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+const canvas = document.getElementById('canvas3d');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setClearColor(0xf3f9fc);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(38, 1, 0.1, 100);
+const DEFAULT_CAMERA = new THREE.Vector3(0.4, 2.7, 8.2);
+camera.position.copy(DEFAULT_CAMERA);
+
+const controls = new OrbitControls(camera, canvas);
+controls.enableDamping = true;
+controls.dampingFactor = 0.08;
+controls.enablePan = false;
+controls.minDistance = 5;
+controls.maxDistance = 14;
+controls.target.set(0, 0, 0);
+
+scene.add(new THREE.HemisphereLight(0xffffff, 0x7892a3, 1.8));
+const keyLight = new THREE.DirectionalLight(0xffffff, 2.5);
+keyLight.position.set(5, 8, 7);
+scene.add(keyLight);
+const rimLight = new THREE.DirectionalLight(0xb7e6f5, 1.1);
+rimLight.position.set(-6, 2, -5);
+scene.add(rimLight);
+
+const CC_LENGTH = 2.5;
+const CH_LENGTH = 1.75;
+const halfCC = CC_LENGTH / 2;
+const sin60 = Math.sqrt(3) / 2;
+
+const POSITIONS = {
+  C1: new THREE.Vector3(-halfCC, 0, 0),
+  C2: new THREE.Vector3(halfCC, 0, 0),
+  H1: new THREE.Vector3(-halfCC - CH_LENGTH / 2, CH_LENGTH * sin60, 0),
+  H2: new THREE.Vector3(-halfCC - CH_LENGTH / 2, -CH_LENGTH * sin60, 0),
+  H3: new THREE.Vector3(halfCC + CH_LENGTH / 2, CH_LENGTH * sin60, 0),
+  H4: new THREE.Vector3(halfCC + CH_LENGTH / 2, -CH_LENGTH * sin60, 0),
+};
+
+const ATOM = {
+  C: { radius: 0.48, color: 0x354652, emissive: 0x17242d },
+  H: { radius: 0.34, color: 0xffffff, emissive: 0x9aa9b3 },
+};
+
+const geometries = {
+  C: new THREE.SphereGeometry(ATOM.C.radius, 36, 28),
+  H: new THREE.SphereGeometry(ATOM.H.radius, 32, 24),
+};
+
+const materials = {
+  C: new THREE.MeshPhongMaterial({ color: ATOM.C.color, emissive: ATOM.C.emissive, emissiveIntensity: 0.12, shininess: 65 }),
+  H: new THREE.MeshPhongMaterial({ color: ATOM.H.color, emissive: ATOM.H.emissive, emissiveIntensity: 0.08, shininess: 90 }),
+  singleBond: new THREE.MeshPhongMaterial({ color: 0x91a5b3, shininess: 42 }),
+  doubleBond: new THREE.MeshPhongMaterial({ color: 0x1976a9, emissive: 0x0d4f80, emissiveIntensity: 0.1, shininess: 55 }),
+};
+
+const molecule = new THREE.Group();
+scene.add(molecule);
+
+function createAtom(position, element) {
+  const atom = new THREE.Mesh(geometries[element], materials[element]);
+  atom.position.copy(position);
+  atom.userData.element = element;
+  return atom;
+}
+
+function createBondBetween(start, end, radius, material) {
+  const direction = new THREE.Vector3().subVectors(end, start);
+  const geometry = new THREE.CylinderGeometry(radius, radius, direction.length(), 14);
+  const bond = new THREE.Mesh(geometry, material);
+  bond.position.copy(start).add(end).multiplyScalar(0.5);
+  bond.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), direction.clone().normalize());
+  return bond;
+}
+
+function createMolecule() {
+  molecule.add(createAtom(POSITIONS.C1, 'C'), createAtom(POSITIONS.C2, 'C'));
+  ['H1', 'H2', 'H3', 'H4'].forEach(key => molecule.add(createAtom(POSITIONS[key], 'H')));
+
+  molecule.add(
+    createBondBetween(POSITIONS.C1, POSITIONS.H1, 0.075, materials.singleBond),
+    createBondBetween(POSITIONS.C1, POSITIONS.H2, 0.075, materials.singleBond),
+    createBondBetween(POSITIONS.C2, POSITIONS.H3, 0.075, materials.singleBond),
+    createBondBetween(POSITIONS.C2, POSITIONS.H4, 0.075, materials.singleBond)
+  );
+
+  const doubleOffset = 0.16;
+  const leftTop = POSITIONS.C1.clone().add(new THREE.Vector3(0, doubleOffset, 0));
+  const rightTop = POSITIONS.C2.clone().add(new THREE.Vector3(0, doubleOffset, 0));
+  const leftBottom = POSITIONS.C1.clone().add(new THREE.Vector3(0, -doubleOffset, 0));
+  const rightBottom = POSITIONS.C2.clone().add(new THREE.Vector3(0, -doubleOffset, 0));
+  molecule.add(
+    createBondBetween(leftTop, rightTop, 0.075, materials.doubleBond),
+    createBondBetween(leftBottom, rightBottom, 0.075, materials.doubleBond)
+  );
+}
+
+function makeLabelTexture(text, color, fontSize = 70) {
+  const labelCanvas = document.createElement('canvas');
+  labelCanvas.width = 384;
+  labelCanvas.height = 160;
+  const context = labelCanvas.getContext('2d');
+  context.textAlign = 'center';
+  context.textBaseline = 'middle';
+  context.font = `800 ${fontSize}px "Microsoft YaHei", Arial, sans-serif`;
+  context.lineJoin = 'round';
+  context.lineWidth = 14;
+  context.strokeStyle = 'rgba(255,255,255,0.98)';
+  context.strokeText(text, 192, 82);
+  context.lineWidth = 4;
+  context.strokeStyle = '#17324d';
+  context.strokeText(text, 192, 82);
+  context.fillStyle = color;
+  context.fillText(text, 192, 82);
+  const texture = new THREE.CanvasTexture(labelCanvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.minFilter = THREE.LinearFilter;
+  return texture;
+}
+
+function createLabelSprite(text, color, position, scaleX, scaleY) {
+  const material = new THREE.SpriteMaterial({
+    map: makeLabelTexture(text, color),
+    transparent: true,
+    depthTest: false,
+    depthWrite: false,
+  });
+  const sprite = new THREE.Sprite(material);
+  sprite.position.copy(position);
+  sprite.scale.set(scaleX, scaleY, 1);
+  sprite.renderOrder = 5;
+  return sprite;
+}
+
+function createPlaneOverlay() {
+  const group = new THREE.Group();
+  const geometry = new THREE.PlaneGeometry(7.2, 4.6);
+  const material = new THREE.MeshPhongMaterial({
+    color: 0x45a6c3,
+    transparent: true,
+    opacity: 0.17,
+    side: THREE.DoubleSide,
+    depthWrite: false,
+  });
+  const plane = new THREE.Mesh(geometry, material);
+  plane.position.z = -0.035;
+  plane.renderOrder = -1;
+  group.add(plane);
+
+  const outlinePoints = [
+    new THREE.Vector3(-3.6, -2.3, -0.025),
+    new THREE.Vector3(3.6, -2.3, -0.025),
+    new THREE.Vector3(3.6, 2.3, -0.025),
+    new THREE.Vector3(-3.6, 2.3, -0.025),
+    new THREE.Vector3(-3.6, -2.3, -0.025),
+  ];
+  const outline = new THREE.Line(
+    new THREE.BufferGeometry().setFromPoints(outlinePoints),
+    new THREE.LineBasicMaterial({ color: 0x227f9b, transparent: true, opacity: 0.85 })
+  );
+  group.add(outline);
+  group.add(createLabelSprite('分子平面', '#146986', new THREE.Vector3(0, -2.05, 0.08), 1.75, 0.73));
+  return group;
+}
+
+function createAngleMarker(center, fromDirection, toDirection, labelPosition) {
+  const group = new THREE.Group();
+  const from = fromDirection.clone().normalize();
+  const to = toDirection.clone().normalize();
+  const startAngle = Math.atan2(from.y, from.x);
+  let sweep = Math.atan2(to.y, to.x) - startAngle;
+  while (sweep <= -Math.PI) sweep += Math.PI * 2;
+  while (sweep > Math.PI) sweep -= Math.PI * 2;
+
+  const radius = 0.78;
+  const points = [];
+  for (let i = 0; i <= 32; i += 1) {
+    const angle = startAngle + sweep * (i / 32);
+    points.push(new THREE.Vector3(
+      center.x + Math.cos(angle) * radius,
+      center.y + Math.sin(angle) * radius,
+      0.09
+    ));
+  }
+  const arc = new THREE.Line(
+    new THREE.BufferGeometry().setFromPoints(points),
+    new THREE.LineBasicMaterial({ color: 0xd98200 })
+  );
+  group.add(arc);
+  group.add(createLabelSprite('≈120°', '#b56b00', labelPosition, 1.5, 0.63));
+  return group;
+}
+
+createMolecule();
+const planeOverlay = createPlaneOverlay();
+molecule.add(planeOverlay);
+
+const angleOverlay = new THREE.Group();
+angleOverlay.add(
+  createAngleMarker(
+    POSITIONS.C1,
+    POSITIONS.H1.clone().sub(POSITIONS.C1),
+    POSITIONS.C2.clone().sub(POSITIONS.C1),
+    new THREE.Vector3(-0.65, 0.9, 0.16)
+  ),
+  createAngleMarker(
+    POSITIONS.C2,
+    POSITIONS.C1.clone().sub(POSITIONS.C2),
+    POSITIONS.H4.clone().sub(POSITIONS.C2),
+    new THREE.Vector3(0.65, -0.9, 0.16)
+  )
+);
+molecule.add(angleOverlay);
+
+const state = { planeVisible: false, anglesVisible: false };
+const defaultBtn = document.getElementById('defaultBtn');
+const planeBtn = document.getElementById('planeBtn');
+const angleBtn = document.getElementById('angleBtn');
+const status = document.getElementById('status');
+
+function updateViewState() {
+  planeOverlay.visible = state.planeVisible;
+  angleOverlay.visible = state.anglesVisible;
+  planeBtn.setAttribute('aria-pressed', String(state.planeVisible));
+  angleBtn.setAttribute('aria-pressed', String(state.anglesVisible));
+  defaultBtn.classList.toggle('active', !state.planeVisible && !state.anglesVisible);
+
+  if (state.planeVisible && state.anglesVisible) {
+    status.textContent = '六个原子位于同一平面；每个碳原子周围呈平面三角形，键角约为 120°。';
+  } else if (state.planeVisible) {
+    status.textContent = '蓝色薄片表示分子平面。请旋转至侧面，观察六个原子中心都落在平面内。';
+  } else if (state.anglesVisible) {
+    status.textContent = '橙色圆弧标出代表性键角：乙烯中每个碳原子周围的键角约为 120°。';
+  } else {
+    status.textContent = '拖动模型，从正面和侧面观察乙烯的平面结构。';
+  }
+}
+
+function resetView() {
+  camera.position.copy(DEFAULT_CAMERA);
+  camera.zoom = 1;
+  camera.updateProjectionMatrix();
+  controls.target.set(0, 0, 0);
+  controls.update();
+  status.textContent = '视角已重置。拖动模型可继续观察，当前辅助标记保持不变。';
+}
+
+defaultBtn.addEventListener('click', () => {
+  state.planeVisible = false;
+  state.anglesVisible = false;
+  updateViewState();
+});
+
+planeBtn.addEventListener('click', () => {
+  state.planeVisible = !state.planeVisible;
+  updateViewState();
+});
+
+angleBtn.addEventListener('click', () => {
+  state.anglesVisible = !state.anglesVisible;
+  updateViewState();
+});
+
+document.getElementById('resetBtn').addEventListener('click', resetView);
+
+function resizeRendererToDisplaySize() {
+  const width = Math.max(1, canvas.clientWidth);
+  const height = Math.max(1, canvas.clientHeight);
+  const pixelRatio = Math.min(window.devicePixelRatio, 2);
+  const pixelWidth = Math.floor(width * pixelRatio);
+  const pixelHeight = Math.floor(height * pixelRatio);
+  if (canvas.width !== pixelWidth || canvas.height !== pixelHeight) {
+    renderer.setSize(width, height, false);
+    camera.aspect = width / height;
+    camera.updateProjectionMatrix();
+  }
+}
+
+function animate() {
+  requestAnimationFrame(animate);
+  resizeRendererToDisplaySize();
+  controls.update();
+  renderer.render(scene, camera);
+}
+
+updateViewState();
+window.__ethyleneReady = true;
+document.getElementById('loadError').style.display = 'none';
+requestAnimationFrame(animate);
+</script>
+</body>
+</html>
