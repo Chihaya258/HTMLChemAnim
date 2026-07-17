@@ -1,0 +1,1114 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>乙烯的加成反应 — C₂H₄ + Br₂</title>
+<style>
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { min-height: 100%; }
+
+  body {
+    background: linear-gradient(rgba(20, 105, 168, 0.05) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(20, 105, 168, 0.05) 1px, transparent 1px),
+                #eef2f6;
+    background-size: 36px 36px;
+    color: #17324d;
+    font-family: "Microsoft YaHei", "PingFang SC", "Hiragino Sans GB", sans-serif;
+  }
+
+  .page {
+    width: min(1700px, calc(100% - 20px));
+    min-height: 100vh;
+    margin: 0 auto;
+    padding: 12px 0 14px;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ── 标题区 ── */
+  .hero {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 6px 8px;
+    flex-wrap: wrap;
+    gap: 6px 18px;
+  }
+
+  .hero-left { display: flex; align-items: baseline; gap: 16px; flex-wrap: wrap; }
+
+  .eyebrow {
+    color: #1469a8;
+    font-size: clamp(18px, 1.2vw, 24px);
+    font-weight: 800;
+    letter-spacing: 0.15em;
+  }
+
+  h1 {
+    font-family: "STKaiti", "KaiTi", "Microsoft YaHei", serif;
+    font-size: clamp(30px, 2.2vw, 44px);
+    line-height: 1.1;
+    letter-spacing: 0.04em;
+  }
+
+  .hero-equation {
+    color: #0d4f80;
+    font-family: "Cambria Math", "Times New Roman", serif;
+    font-size: clamp(22px, 1.6vw, 32px);
+    font-weight: 700;
+    padding: 6px 18px;
+    background: rgba(255,255,255,0.75);
+    border-radius: 10px;
+    white-space: nowrap;
+  }
+
+  /* ── 画布容器 ── */
+  .canvas-card {
+    flex: 1;
+    min-height: 0;
+    position: relative;
+    background: #fff;
+    border: 1px solid #bfd1dc;
+    border-radius: 18px;
+    overflow: hidden;
+    box-shadow: 0 6px 24px rgba(31, 76, 104, 0.10);
+  }
+
+  canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+    touch-action: none;
+  }
+
+  .loading-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: #fff;
+    color: #607080;
+    font-size: 24px;
+    z-index: 2;
+    transition: opacity 0.6s ease;
+  }
+  .loading-overlay.hidden { opacity: 0; pointer-events: none; }
+  .loading-spinner {
+    width: 48px;
+    height: 48px;
+    border: 5px solid #d3dee6;
+    border-top-color: #1976d2;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-bottom: 16px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── 控件区 ── */
+  .controls {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 10px 0 6px;
+    flex-wrap: wrap;
+  }
+
+  .ctrl-btn {
+    flex-shrink: 0;
+    width: 56px;
+    height: 56px;
+    border: 2px solid #1469a8;
+    border-radius: 50%;
+    background: #fff;
+    color: #0d4f80;
+    font-size: 26px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 140ms ease, box-shadow 140ms ease, background 140ms ease;
+    user-select: none;
+  }
+  .ctrl-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 14px rgba(20, 105, 168, 0.18); }
+  .ctrl-btn:active { transform: translateY(0); }
+  .ctrl-btn:focus-visible { outline: 3px solid rgba(217,130,0,0.5); outline-offset: 2px; }
+  .ctrl-btn.playing { background: #1469a8; color: #fff; }
+
+  .ctrl-btn-small {
+    width: 44px;
+    height: 44px;
+    font-size: 22px;
+    border-radius: 50%;
+    border: 2px solid #bfd1dc;
+    background: #fff;
+    color: #526d7f;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 140ms ease, box-shadow 140ms ease;
+  }
+  .ctrl-btn-small:hover { transform: translateY(-1px); box-shadow: 0 4px 10px rgba(0,0,0,0.10); }
+  .ctrl-btn-small:focus-visible { outline: 3px solid rgba(217,130,0,0.5); outline-offset: 2px; }
+
+  /* ── 进度条 ── */
+  .progress-wrap {
+    flex: 1;
+    min-width: 200px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .progress-track {
+    position: relative;
+    height: 24px;
+    background: #d3dee6;
+    border-radius: 12px;
+    cursor: pointer;
+    touch-action: none;
+    margin: 0 2px;
+  }
+  .progress-track:focus-visible { outline: 3px solid rgba(217,130,0,0.5); outline-offset: 2px; }
+
+  .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #1976d2, #2196f3);
+    border-radius: 12px;
+    pointer-events: none;
+    transition: width 0.05s linear;
+  }
+
+  .progress-dot {
+    position: absolute;
+    top: 50%;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: #fff;
+    border: 3px solid #1976d2;
+    box-shadow: 0 1px 6px rgba(0,0,0,0.18);
+    pointer-events: none;
+    transform: translate(-50%, -50%);
+    transition: left 0.05s linear;
+  }
+
+  .step-divider {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: rgba(255,255,255,0.8);
+    pointer-events: none;
+  }
+
+  .step-labels {
+    display: flex;
+    justify-content: space-around;
+    padding: 0 4px;
+    font-size: clamp(15px, 0.9vw, 19px);
+    color: #607080;
+    user-select: none;
+  }
+  .step-labels .active-label { color: #0d4f80; font-weight: 700; }
+
+  /* ── 状态栏 ── */
+  .status-bar {
+    padding: 7px 16px;
+    border-radius: 10px;
+    background: rgba(255,255,255,0.88);
+    border: 1px solid #bfd1dc;
+    text-align: center;
+    font-size: clamp(22px, 1.3vw, 28px);
+    line-height: 1.4;
+    color: #17324d;
+    min-height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  .step-badge {
+    display: inline-block;
+    padding: 2px 14px;
+    border-radius: 999px;
+    background: #1469a8;
+    color: #fff;
+    font-size: clamp(17px, 1.0vw, 22px);
+    font-weight: 700;
+    white-space: nowrap;
+  }
+
+  /* ── 化学说明 ── */
+  .explanation {
+    margin-top: 10px;
+    padding: 14px 22px;
+    background: #fff;
+    border: 1px solid #bfd1dc;
+    border-radius: 14px;
+    box-shadow: 0 4px 16px rgba(31, 76, 104, 0.07);
+  }
+
+  .explanation h2 {
+    font-size: clamp(20px, 1.2vw, 26px);
+    color: #0d4f80;
+    margin-bottom: 6px;
+  }
+
+  .explanation p, .explanation li {
+    font-size: clamp(17px, 1.0vw, 21px);
+    line-height: 1.65;
+    color: #34495e;
+  }
+
+  .explanation ul { margin: 4px 0 0 22px; }
+
+  .explanation .formula {
+    font-family: "Cambria Math", "Times New Roman", serif;
+    font-weight: 700;
+    font-style: italic;
+  }
+
+  .explanation .highlight-blue { color: #1976d2; font-weight: 600; }
+  .explanation .highlight-orange { color: #e65100; font-weight: 600; }
+  .explanation .highlight-green { color: #2e7d32; font-weight: 600; }
+
+  .explanation summary {
+    cursor: pointer;
+    font-size: clamp(17px, 1.0vw, 22px);
+    font-weight: 700;
+    color: #1469a8;
+    padding: 4px 0;
+  }
+  .explanation summary:focus-visible { outline: 3px solid rgba(217,130,0,0.5); outline-offset: 2px; }
+
+  /* ── 响应式 ── */
+  @media (max-width: 860px) {
+    .hero { flex-direction: column; align-items: flex-start; }
+    .hero-equation { white-space: normal; align-self: flex-start; }
+    .controls { gap: 10px; }
+    .ctrl-btn { width: 48px; height: 48px; font-size: 22px; }
+    .ctrl-btn-small { width: 38px; height: 38px; font-size: 18px; }
+    .status-bar { min-height: 42px; }
+  }
+
+  @media (max-width: 540px) {
+    .page { width: calc(100% - 12px); padding: 6px 0 10px; }
+    .controls { gap: 8px; }
+    .ctrl-btn { width: 42px; height: 42px; font-size: 20px; }
+    .ctrl-btn-small { width: 34px; height: 34px; font-size: 16px; }
+    .explanation { padding: 10px 14px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
+  }
+</style>
+</head>
+<body>
+<main class="page">
+
+  <!-- ─── 标题 ─── -->
+  <header class="hero">
+    <div class="hero-left">
+      <span class="eyebrow">反应机理 · 加成</span>
+      <h1>乙烯的加成反应</h1>
+    </div>
+    <div class="hero-equation">CH₂=CH₂ + Br₂ → CH₂BrCH₂Br</div>
+  </header>
+
+  <!-- ─── 画布 ─── -->
+  <section class="canvas-card" aria-label="乙烯加成反应三维动画场景">
+    <div class="loading-overlay" id="loadingOverlay">
+      <div class="loading-spinner"></div>
+      <div>加载反应场景…</div>
+    </div>
+    <canvas id="reactionCanvas"
+      aria-label="乙烯与溴的加成反应机理动画，显示π键断裂、Br-Br键断裂和C-Br成键三步过程"
+      role="img">
+      您的浏览器不支持 Canvas 动画。以下是用文字描述的反应过程：
+      乙烯（CH₂=CH₂）与溴（Br₂）发生加成反应，先生成一个溴鎓离子中间体，
+      然后溴负离子从背面进攻，生成1,2-二溴乙烷。
+    </canvas>
+  </section>
+
+  <!-- ─── 进度条 & 控件 ─── -->
+  <section class="controls" aria-label="播放控制">
+    <button class="ctrl-btn" id="playBtn" type="button" aria-label="播放" title="播放 / 暂停">▶</button>
+    <button class="ctrl-btn-small" id="resetBtn" type="button" aria-label="重置" title="重置到起点">⟳</button>
+
+    <div class="progress-wrap">
+      <div class="progress-track" id="progressTrack" role="slider" aria-label="反应进度"
+           tabindex="0" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+        <div class="progress-fill" id="progressFill" style="width: 0%;"></div>
+        <div class="progress-dot" id="progressDot" style="left: 0%;"></div>
+        <div class="step-divider" style="left: 30%;"></div>
+        <div class="step-divider" style="left: 65%;"></div>
+      </div>
+      <div class="step-labels" id="stepLabels">
+        <span data-step="0">① 键断裂</span>
+        <span data-step="1">② Br-Br断裂</span>
+        <span data-step="2">③ 配对成键</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── 状态栏 ─── -->
+  <div class="status-bar" id="statusBar" aria-live="polite">
+    <span class="step-badge" id="stepBadge">准备</span>
+    <span id="statusText">点击 ▶ 开始演示乙烯的加成反应过程</span>
+  </div>
+
+  <!-- ─── 化学说明 ─── -->
+  <details class="explanation" id="explanation">
+    <summary>反应原理（点击展开）</summary>
+    <h2>乙烯与溴的加成反应</h2>
+    <p>
+      乙烯（<span class="formula">CH₂=CH₂</span>）中的
+      <strong>C=C 双键</strong>包含一个 σ 键和一个 π 键。
+      π 键较弱，在反应中容易断开。
+    </p>
+    <ul>
+      <li><strong>① 键断裂</strong>：C=C 中的 π 键断裂，两个碳上各留一个<strong>"半截键"</strong>（相当于一个未成对电子），C—C 之间仍由 σ 键连接。</li>
+      <li><strong>② Br—Br 断裂</strong>：Br₂ 靠近乙烯，Br—Br 键断裂，两个溴上各留一个<strong>"半截键"</strong>。</li>
+      <li><strong>③ 配对成键</strong>：碳和溴的"半截键"互相配对，形成两根新的 C—Br 键，生成 <span class="formula">CH₂BrCH₂Br</span>（1,2-二溴乙烷）。</li>
+    </ul>
+    <p style="margin-top:8px;">
+      📌 这个反应属于 <strong>加成反应</strong>，可用于检验不饱和烃（溴水褪色）。
+      反应前后共价键的变化：<span class="formula">C=C</span> + Br—Br → C—C + 2 C—Br。
+    </p>
+  </details>
+
+</main>
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+//  1. 配置常量
+// ═══════════════════════════════════════════════════════════════
+
+const STEP_DURATIONS = [3.0, 3.5, 3.5]; // 秒
+const TOTAL_DURATION = STEP_DURATIONS.reduce((a, b) => a + b, 0);
+const STEP_NAMES = ['π键断裂', 'Br-Br断裂', 'C-Br成键'];
+const STEP_COLORS = ['#e65100', '#6a1b9a', '#1976d2'];
+
+// 捕捉 canvas
+const canvas = document.getElementById('reactionCanvas');
+const ctx = canvas.getContext('2d');
+
+// 虚拟坐标（固定逻辑尺寸，canvas 实际尺寸由 CSS 决定）
+const VW = 1600;
+const VH = 720;
+
+const CX = VW / 2;  // 场景中心 x
+const CY = VH / 2;  // 场景中心 y
+
+// ═══════════════════════════════════════════════════════════════
+//  2. 分子布局 — 所有位置以 (CX, CY) 为原点偏移
+// ═══════════════════════════════════════════════════════════════
+
+const LAYOUT = {
+  // 乙烯（静态参考；C₂ 在右侧, C₁ 在左侧）
+  ethylene: {
+    C1:  { x: -130, y: 0 },
+    C2:  { x: 130,  y: 0 },
+    H11: { x: -270, y: -90 },
+    H12: { x: -270, y: 90 },
+    H21: { x: 270,  y: -90 },
+    H22: { x: 270,  y: 90 },
+  },
+
+  // Br₂ 起始（右侧远处）
+  Br2_start: {
+    Br1: { x: 440, y: -40 },
+    Br2: { x: 560, y: 40 },
+  },
+
+  // Br⁺ 进攻位（接近 C1）
+  Br_cation: {
+    Br1: { x: -250, y: -40 },
+  },
+
+  // Br⁻ 进攻位（接近 C2）
+  Br_anion: {
+    Br2: { x: 250, y: -40 },
+  },
+
+  // 最终产物位置
+  product: {
+    C1:  { x: -130, y: 0 },
+    C2:  { x: 130,  y: 0 },
+    Br1: { x: -320, y: -60 },
+    Br2: { x: 320,  y: -60 },
+    H11: { x: -260, y: -90 },
+    H12: { x: -220, y: 90 },
+    H21: { x: 220,  y: 90 },
+    H22: { x: 260,  y: -90 },
+  },
+
+  // 反应箭头
+  arrow: { x: 0, y: 150 },
+};
+
+// ═══════════════════════════════════════════════════════════════
+//  3. 绘图工具函数
+// ═══════════════════════════════════════════════════════════════
+
+/** 线性插值 */
+function lerp(a, b, t) { return a + (b - a) * t; }
+
+/** 绘制一条化学键（带圆头 */
+function drawBond(ctx, x1, y1, x2, y2, color, lineWidth, opacity) {
+  ctx.save();
+  ctx.globalAlpha = opacity || 1;
+  ctx.strokeStyle = color;
+  ctx.lineWidth = lineWidth || 6;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(x1, y1);
+  ctx.lineTo(x2, y2);
+  ctx.stroke();
+  ctx.restore();
+}
+
+/** 绘制双键的第二条线（平行偏移）*/
+function drawBondDoubleSecond(ctx, x1, y1, x2, y2, color, lineWidth, opacity, offset) {
+  const dx = x2 - x1, dy = y2 - y1;
+  const len = Math.sqrt(dx * dx + dy * dy);
+  if (len < 1) return;
+  const nx = -dy / len * (offset || 14);
+  const ny = dx / len * (offset || 14);
+  drawBond(ctx, x1 + nx, y1 + ny, x2 + nx, y2 + ny, color, lineWidth, opacity);
+}
+
+/** 绘制原子（圆形 + 标签）*/
+function drawAtom(ctx, x, y, label, fillColor, textColor, radius, opacity) {
+  opacity = opacity || 1;
+  ctx.save();
+  ctx.globalAlpha = opacity;
+
+  // 圆
+  ctx.beginPath();
+  ctx.arc(x, y, radius || 28, 0, Math.PI * 2);
+  ctx.fillStyle = fillColor || '#e8eef4';
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(0,0,0,0.12)';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+
+  // 标签
+  if (label) {
+    ctx.fillStyle = textColor || '#17324d';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    const fs = (radius > 24) ? 34 : (radius > 20 ? 28 : 22);
+    ctx.font = `700 ${fs}px "Microsoft YaHei", "PingFang SC", "Segoe UI", sans-serif`;
+    ctx.fillText(label, x, y + 1);
+  }
+
+  ctx.restore();
+}
+
+/** 绘制 "＋" 号 */
+function drawPlus(ctx, x, y) {
+  ctx.save();
+  ctx.strokeStyle = '#607080';
+  ctx.lineWidth = 5;
+  ctx.lineCap = 'round';
+  const s = 20;
+  ctx.beginPath();
+  ctx.moveTo(x - s, y); ctx.lineTo(x + s, y);
+  ctx.moveTo(x, y - s); ctx.lineTo(x, y + s);
+  ctx.stroke();
+  ctx.restore();
+}
+
+/** 半截键——断键后留在原子上的短线+单电子点 */
+function drawDanglingBond(ctx, x, y, dx, dy, length, color, opacity, showDot) {
+  ctx.save();
+  ctx.globalAlpha = opacity;
+  const ex = x + dx * length, ey = y + dy * length;
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 5; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(ex, ey); ctx.stroke();
+  if (showDot) {
+    ctx.fillStyle = color;
+    ctx.beginPath(); ctx.arc(ex, ey, 7, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.restore();
+}
+
+/** 绘制步骤标题 */
+function drawStepTitle(ctx, text, color, progress) {
+  const alpha = Math.min(1, progress * 2);
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.fillStyle = 'rgba(255,255,255,0.92)';
+  const tw = ctx.measureText(text).width + 60;
+  const rx = CX - tw / 2;
+  const ry = 18;
+  const rh = 54;
+  const r = 12;
+  // 圆角矩形背景
+  ctx.beginPath();
+  ctx.moveTo(rx + r, ry);
+  ctx.lineTo(rx + tw - r, ry);
+  ctx.quadraticCurveTo(rx + tw, ry, rx + tw, ry + r);
+  ctx.lineTo(rx + tw, ry + rh - r);
+  ctx.quadraticCurveTo(rx + tw, ry + rh, rx + tw - r, ry + rh);
+  ctx.lineTo(rx + r, ry + rh);
+  ctx.quadraticCurveTo(rx, ry + rh, rx, ry + rh - r);
+  ctx.lineTo(rx, ry + r);
+  ctx.quadraticCurveTo(rx, ry, rx + r, ry);
+  ctx.closePath();
+  ctx.fill();
+  ctx.shadowColor = 'rgba(0,0,0,0.06)';
+  ctx.shadowBlur = 6;
+
+  ctx.shadowBlur = 0;
+  ctx.fillStyle = color || '#333';
+  ctx.font = '700 32px "Microsoft YaHei", "PingFang SC", sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(text, CX, ry + rh / 2);
+  ctx.restore();
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  4. 步骤绘制函数
+// ═══════════════════════════════════════════════════════════════
+
+/**
+ * 步骤 1 — π键断裂 (t: 0→1)
+ * C=C 的 π 键断开，两个碳上各留一根"半截键"（短线+单电子点）。
+ */
+function drawStep0(ctx, t) {
+  const E = LAYOUT.ethylene;
+  const BR = LAYOUT.Br2_start;
+
+  const c1x = CX + E.C1.x, c1y = CY + E.C1.y;
+  const c2x = CX + E.C2.x, c2y = CY + E.C2.y;
+  const h11x = CX + E.H11.x, h11y = CY + E.H11.y;
+  const h12x = CX + E.H12.x, h12y = CY + E.H12.y;
+  const h21x = CX + E.H21.x, h21y = CY + E.H21.y;
+  const h22x = CX + E.H22.x, h22y = CY + E.H22.y;
+  const br1x = CX + BR.Br1.x, br1y = CY + BR.Br1.y;
+  const br2x = CX + BR.Br2.x, br2y = CY + BR.Br2.y;
+
+  // C-C σ 键（始终可见）
+  drawBond(ctx, c1x, c1y, c2x, c2y, '#444', 7, 1);
+  // π 键渐淡
+  const piOp = Math.max(0, 1 - t * 1.2);
+  drawBondDoubleSecond(ctx, c1x, c1y, c2x, c2y, '#e65100', 5, piOp, 16);
+
+  // 半截键出现（t>0.3 时，从短到长）
+  const stubT = Math.max(0, Math.min(1, (t - 0.3) / 0.4));
+  if (stubT > 0) {
+    const L = stubT * 36;
+    drawDanglingBond(ctx, c1x, c1y, -0.25, -1, L, '#e65100', stubT, true);
+    drawDanglingBond(ctx, c2x, c2y, 0.25, -1, L, '#e65100', stubT, true);
+  }
+
+  // C-H 键 + 原子
+  drawBond(ctx, c1x, c1y, h11x, h11y, '#999', 5, 1);
+  drawBond(ctx, c1x, c1y, h12x, h12y, '#999', 5, 1);
+  drawBond(ctx, c2x, c2y, h21x, h21y, '#999', 5, 1);
+  drawBond(ctx, c2x, c2y, h22x, h22y, '#999', 5, 1);
+  drawAtom(ctx, c1x, c1y, 'C', '#3a3a4a', '#fff', 30);
+  drawAtom(ctx, c2x, c2y, 'C', '#3a3a4a', '#fff', 30);
+  drawAtom(ctx, h11x, h11y, 'H', '#f0f4f8', '#444', 20);
+  drawAtom(ctx, h12x, h12y, 'H', '#f0f4f8', '#444', 20);
+  drawAtom(ctx, h21x, h21y, 'H', '#f0f4f8', '#444', 20);
+  drawAtom(ctx, h22x, h22y, 'H', '#f0f4f8', '#444', 20);
+
+  // Br₂（静止在右侧）
+  const brOp = 0.7 + 0.3 * (1 - t * 0.3);
+  drawBond(ctx, br1x, br1y, br2x, br2y, '#8d3b1f', 6, brOp);
+  drawAtom(ctx, br1x, br1y, 'Br', '#bf5825', '#fff', 32, brOp);
+  drawAtom(ctx, br2x, br2y, 'Br', '#bf5825', '#fff', 32, brOp);
+
+  drawPlus(ctx, (c2x + br1x) / 2, (c2y + br1y) / 2 + 20);
+
+  if (t > 0.15) drawStepTitle(ctx, 'π 键断开，留下半截键', '#e65100', (t - 0.15) / 0.25);
+}
+
+/**
+ * 步骤 2 — Br-Br 断裂 (t: 0→1)
+ * 乙烯保持单键+半截键；Br₂ 靠近，Br-Br 键断，两个 Br 分开到各自碳上方。
+ */
+function drawStep1(ctx, t) {
+  const E = LAYOUT.ethylene;
+  const BR = LAYOUT.Br2_start;
+
+  const c1x = CX + E.C1.x, c1y = CY + E.C1.y;
+  const c2x = CX + E.C2.x, c2y = CY + E.C2.y;
+  const h11x = CX + E.H11.x, h11y = CY + E.H11.y;
+  const h12x = CX + E.H12.x, h12y = CY + E.H12.y;
+  const h21x = CX + E.H21.x, h21y = CY + E.H21.y;
+  const h22x = CX + E.H22.x, h22y = CY + E.H22.y;
+
+  // 乙烯骨架
+  drawBond(ctx, c1x, c1y, c2x, c2y, '#444', 7, 1);
+  drawBond(ctx, c1x, c1y, h11x, h11y, '#999', 5, 1);
+  drawBond(ctx, c1x, c1y, h12x, h12y, '#999', 5, 1);
+  drawBond(ctx, c2x, c2y, h21x, h21y, '#999', 5, 1);
+  drawBond(ctx, c2x, c2y, h22x, h22y, '#999', 5, 1);
+  drawAtom(ctx, c1x, c1y, 'C', '#3a3a4a', '#fff', 30);
+  drawAtom(ctx, c2x, c2y, 'C', '#3a3a4a', '#fff', 30);
+  drawAtom(ctx, h11x, h11y, 'H', '#f0f4f8', '#444', 20);
+  drawAtom(ctx, h12x, h12y, 'H', '#f0f4f8', '#444', 20);
+  drawAtom(ctx, h21x, h21y, 'H', '#f0f4f8', '#444', 20);
+  drawAtom(ctx, h22x, h22y, 'H', '#f0f4f8', '#444', 20);
+
+  // C 上的半截键（延续上一步）
+  drawDanglingBond(ctx, c1x, c1y, -0.25, -1, 36, '#e65100', 0.9, true);
+  drawDanglingBond(ctx, c2x, c2y, 0.25, -1, 36, '#e65100', 0.9, true);
+
+  // —— 阶段 1：Br₂ 从右侧飞到 C=C 上方 ——
+  const midX = (c1x + c2x) / 2;
+  const closeT = Math.min(1, t / 0.6);
+  const br1_near = lerp(CX + BR.Br1.x, midX - 20, closeT);
+  const brNearY1 = lerp(CY + BR.Br1.y, CY - 180, closeT);
+  const br2_near = lerp(CX + BR.Br2.x, midX + 20, closeT);
+  const brNearY2 = lerp(CY + BR.Br2.y, CY - 180, closeT);
+
+  // —— 阶段 2：Br-Br 断，两个 Br 各奔各的碳 ——
+  const breakT = Math.max(0, Math.min(1, (t - 0.45) / 0.4));
+  // Br1 → 滑到 C1 左上方，Br2 → 滑到 C2 右上方
+  const br1x = lerp(br1_near, c1x - 80, breakT);
+  const br1y = lerp(brNearY1, c1y - 150, breakT);
+  const br2x = lerp(br2_near, c2x + 80, breakT);
+  const br2y = lerp(brNearY2, c2y - 150, breakT);
+
+  // Br-Br 键（断裂时渐淡）
+  const bondVisible = 1 - Math.min(1, breakT * 1.5);
+  if (bondVisible > 0) drawBond(ctx, br1x, br1y, br2x, br2y, '#8d3b1f', 5, bondVisible);
+
+  drawAtom(ctx, br1x, br1y, 'Br', '#bf5825', '#fff', 30, 0.9);
+  drawAtom(ctx, br2x, br2y, 'Br', '#bf5825', '#fff', 30, 0.9);
+
+  // Br 上的半截键（断裂后出现）
+  if (breakT > 0) {
+    const s = Math.min(1, breakT * 1.5);
+    const dx = br2x - br1x, dy = br2y - br1y, len = Math.hypot(dx, dy) || 1;
+    drawDanglingBond(ctx, br1x, br1y, dx/len, dy/len, s * 30, '#8d3b1f', s, true);
+    drawDanglingBond(ctx, br2x, br2y, -dx/len, -dy/len, s * 30, '#8d3b1f', s, true);
+  }
+
+  drawPlus(ctx, (c2x + br1x) / 2, (c2y + br1y) / 2 + 10);
+  drawStepTitle(ctx, 'Br-Br 断开，留下半截键', '#6a1b9a', t / 0.5);
+}
+
+/**
+ * 步骤 3 — 半截键配对成键 (t: 0→1)
+ * C 上的半截键和 Br 上的半截键配对，形成 C-Br 键。
+ * Br 起始位置 = 上一步结束位置，无缝衔接。
+ */
+function drawStep2(ctx, t) {
+  const E = LAYOUT.ethylene;
+  const P = LAYOUT.product;
+
+  // 原子平滑过渡到产物位置
+  const c1x  = lerp(CX + E.C1.x, CX + P.C1.x, t);
+  const c1y  = lerp(CY + E.C1.y, CY + P.C1.y, t);
+  const c2x  = lerp(CX + E.C2.x, CX + P.C2.x, t);
+  const c2y  = lerp(CY + E.C2.y, CY + P.C2.y, t);
+  const h11x = lerp(CX + E.H11.x, CX + P.H11.x, t);
+  const h11y = lerp(CY + E.H11.y, CY + P.H11.y, t);
+  const h12x = lerp(CX + E.H12.x, CX + P.H12.x, t);
+  const h12y = lerp(CY + E.H12.y, CY + P.H12.y, t);
+  const h21x = lerp(CX + E.H21.x, CX + P.H21.x, t);
+  const h21y = lerp(CY + E.H21.y, CY + P.H21.y, t);
+  const h22x = lerp(CX + E.H22.x, CX + P.H22.x, t);
+  const h22y = lerp(CY + E.H22.y, CY + P.H22.y, t);
+
+  // Br 起始 = 步骤 2 结束位置（和 drawStep1 t=1 一致），终止 = 产物位置
+  const br1x = lerp(CX + E.C1.x - 80, CX + P.Br1.x, t);
+  const br1y = lerp(CY + E.C1.y - 150, CY + P.Br1.y, t);
+  const br2x = lerp(CX + E.C2.x + 80, CX + P.Br2.x, t);
+  const br2y = lerp(CY + E.C2.y - 150, CY + P.Br2.y, t);
+
+  // C-C σ 键 + C-H 键
+  drawBond(ctx, c1x, c1y, c2x, c2y, '#444', 7, 1);
+  drawBond(ctx, c1x, c1y, h11x, h11y, '#999', 5, 1);
+  drawBond(ctx, c1x, c1y, h12x, h12y, '#999', 5, 1);
+  drawBond(ctx, c2x, c2y, h21x, h21y, '#999', 5, 1);
+  drawBond(ctx, c2x, c2y, h22x, h22y, '#999', 5, 1);
+
+  // 半截键渐隐
+  const fade = 1 - Math.min(1, t * 1.8);
+  drawDanglingBond(ctx, c1x, c1y, -0.25, -1, 36 * fade, '#e65100', fade, fade > 0.1);
+  drawDanglingBond(ctx, c2x, c2y, 0.25, -1, 36 * fade, '#e65100', fade, fade > 0.1);
+  const d = Math.hypot(br2x - br1x, br2y - br1y) || 1;
+  drawDanglingBond(ctx, br1x, br1y, (br2x - br1x) / d, (br2y - br1y) / d, 30 * fade, '#8d3b1f', fade, fade > 0.1);
+  drawDanglingBond(ctx, br2x, br2y, (br1x - br2x) / d, (br1y - br2y) / d, 30 * fade, '#8d3b1f', fade, fade > 0.1);
+
+  // C-Br 键渐现
+  const bondT = Math.min(1, t * 1.5);
+  drawBond(ctx, c1x, c1y, br1x, br1y, '#1976d2', 6, bondT);
+  drawBond(ctx, c2x, c2y, br2x, br2y, '#1976d2', 6, bondT);
+
+  // 原子
+  drawAtom(ctx, c1x, c1y, 'C', '#3a3a4a', '#fff', 30);
+  drawAtom(ctx, c2x, c2y, 'C', '#3a3a4a', '#fff', 30);
+  drawAtom(ctx, h11x, h11y, 'H', '#f0f4f8', '#444', 20);
+  drawAtom(ctx, h12x, h12y, 'H', '#f0f4f8', '#444', 20);
+  drawAtom(ctx, h21x, h21y, 'H', '#f0f4f8', '#444', 20);
+  drawAtom(ctx, h22x, h22y, 'H', '#f0f4f8', '#444', 20);
+  drawAtom(ctx, br1x, br1y, 'Br', '#bf5825', '#fff', 32);
+  drawAtom(ctx, br2x, br2y, 'Br', '#bf5825', '#fff', 32);
+
+  drawStepTitle(ctx, '半截键配对 → C-Br 键形成', '#1976d2', t / 0.35);
+
+  if (t > 0.6) {
+    const la = Math.min(1, (t - 0.6) * 3);
+    ctx.save(); ctx.globalAlpha = la;
+    ctx.fillStyle = '#0d4f80';
+    ctx.font = '700 30px "STKaiti", "Microsoft YaHei", serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+    ctx.fillText('1,2-二溴乙烷 (CH₂BrCH₂Br)', CX, CY + 170);
+    ctx.restore();
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  5. 状态管理
+// ═══════════════════════════════════════════════════════════════
+
+let totalElapsed = 0;     // 真实流逝时间（秒）
+let progressDisplay = 0;  // 显示用进度（lerp 平滑追赶）
+let isPlaying = false;
+let lastTimestamp = 0;
+let currentStep = -1;     // -1 = 未开始, 0, 1, 2
+
+// DOM 引用
+const playBtn = document.getElementById('playBtn');
+const resetBtn = document.getElementById('resetBtn');
+const progressTrack = document.getElementById('progressTrack');
+const progressFill = document.getElementById('progressFill');
+const progressDot = document.getElementById('progressDot');
+const stepLabels = document.getElementById('stepLabels');
+const statusText = document.getElementById('statusText');
+const stepBadge = document.getElementById('stepBadge');
+const loadingOverlay = document.getElementById('loadingOverlay');
+
+// ── 获取当前步骤 (0/1/2) ──
+function getStepFromTime(t) {
+  let accum = 0;
+  for (let i = 0; i < STEP_DURATIONS.length; i++) {
+    accum += STEP_DURATIONS[i];
+    if (t < accum) return i;
+  }
+  return STEP_DURATIONS.length - 1;
+}
+
+// ── 获取步骤内局部进度 [0, 1] ──
+function getLocalProgress(t) {
+  if (t >= TOTAL_DURATION) return 1;
+  let accum = 0;
+  for (let i = 0; i < STEP_DURATIONS.length; i++) {
+    accum += STEP_DURATIONS[i];
+    if (t < accum) {
+      const prev = accum - STEP_DURATIONS[i];
+      return (t - prev) / STEP_DURATIONS[i];
+    }
+  }
+  return 1;
+}
+
+// ── 跳转到指定时间（供 seek 使用）──
+function goToTime(t) {
+  totalElapsed = Math.max(0, Math.min(TOTAL_DURATION, t));
+  progressDisplay = totalElapsed; // 跳转时直接同步（不 lerp）
+  renderFrame();
+  updateProgressUI();
+  updateStatus();
+}
+
+// ── 跳转到指定步骤（供 seek 使用）──
+function goToStep(step) {
+  let t = 0;
+  for (let i = 0; i < step; i++) t += STEP_DURATIONS[i];
+  // 跳到该步骤起始
+  goToTime(t);
+}
+
+// ── 前进一步到下一步 ──
+function advanceStep() {
+  const newStep = currentStep + 1;
+  if (newStep >= STEP_DURATIONS.length) {
+    isPlaying = false;
+    playBtn.textContent = '▶';
+    playBtn.classList.remove('playing');
+    playBtn.setAttribute('aria-label', '播放');
+    return;
+  }
+  // 跳到下一步骤起点
+  goToStep(newStep);
+}
+
+// ── 渲染一帧 ──
+function renderFrame() {
+  const W = canvas.width;
+  const H = canvas.height;
+  if (W === 0 || H === 0) return;
+
+  const scale = W / VW;
+
+  ctx.save();
+  ctx.scale(scale, scale);
+  ctx.clearRect(0, 0, VW, VH);
+
+  // 背景
+  ctx.fillStyle = '#f7fafc';
+  ctx.fillRect(0, 0, VW, VH);
+
+  // 网格辅助线（极淡）
+  ctx.strokeStyle = 'rgba(191, 209, 220, 0.25)';
+  ctx.lineWidth = 1;
+  for (let x = 80; x < VW; x += 80) {
+    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, VH); ctx.stroke();
+  }
+  for (let y = 80; y < VH; y += 80) {
+    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(VW, y); ctx.stroke();
+  }
+
+  // 背景 & 网格
+  if (totalElapsed <= 0) {
+    // 初始状态：完整的乙烯 + Br₂
+    drawStep0(ctx, 0);
+  } else if (totalElapsed < STEP_DURATIONS[0]) {
+    // Step 0
+    const t = totalElapsed / STEP_DURATIONS[0];
+    drawStep0(ctx, t);
+  } else if (totalElapsed < STEP_DURATIONS[0] + STEP_DURATIONS[1]) {
+    // Step 1
+    const t = (totalElapsed - STEP_DURATIONS[0]) / STEP_DURATIONS[1];
+    drawStep1(ctx, t);
+  } else if (totalElapsed < TOTAL_DURATION) {
+    // Step 2
+    const t = (totalElapsed - STEP_DURATIONS[0] - STEP_DURATIONS[1]) / STEP_DURATIONS[2];
+    drawStep2(ctx, t);
+  } else {
+    // 终态
+    drawStep2(ctx, 1);
+  }
+
+  // 总进度条（右上角小缩略条，仅供视觉参考不必）
+
+  ctx.restore();
+}
+
+// ── 更新进度条 UI ──
+function updateProgressUI() {
+  const pct = (progressDisplay / TOTAL_DURATION) * 100;
+  progressFill.style.width = pct + '%';
+  progressDot.style.left = pct + '%';
+  progressTrack.setAttribute('aria-valuenow', Math.round(pct));
+}
+
+// ── 更新状态栏 ──
+function updateStatus() {
+  const step = getStepFromTime(totalElapsed);
+  const localT = getLocalProgress(totalElapsed);
+
+  if (totalElapsed <= 0) {
+    stepBadge.textContent = '准备';
+    statusText.textContent = '点击 ▶ 开始演示乙烯的加成反应过程';
+    currentStep = -1;
+    return;
+  }
+
+  if (totalElapsed >= TOTAL_DURATION) {
+    stepBadge.textContent = '完成 ✓';
+    statusText.textContent = '加成反应完成！生成物为 1,2-二溴乙烷（CH₂BrCH₂Br）';
+    currentStep = 2;
+    // 高亮所有标签
+    document.querySelectorAll('.step-labels span').forEach((el, i) => {
+      el.classList.toggle('active-label', true);
+    });
+    return;
+  }
+
+  currentStep = step;
+  stepBadge.textContent = `步骤 ${step + 1}`;
+  stepBadge.style.background = STEP_COLORS[step];
+
+  const statusMsgs = [
+    '乙烯的 π 键断开，两个碳上各留一个"半截键"',
+    'Br₂ 靠近，Br-Br 键断开，两个溴上各留一个"半截键"',
+    '碳和溴的半截键互相配对，形成两根 C-Br 键，生成 1,2-二溴乙烷',
+  ];
+  statusText.textContent = statusMsgs[step] || '';
+
+  // 高亮当前步骤标签
+  document.querySelectorAll('.step-labels span').forEach((el, i) => {
+    el.classList.toggle('active-label', i === step);
+  });
+}
+
+// ── 主循环 ──
+function tick(timestamp) {
+  if (!lastTimestamp) lastTimestamp = timestamp;
+  const dt = Math.min((timestamp - lastTimestamp) / 1000, 0.05);
+  lastTimestamp = timestamp;
+
+  if (isPlaying) {
+    totalElapsed += dt;
+
+    // 检查是否完成
+    if (totalElapsed >= TOTAL_DURATION) {
+      totalElapsed = TOTAL_DURATION;
+      isPlaying = false;
+      playBtn.textContent = '▶';
+      playBtn.classList.remove('playing');
+      playBtn.setAttribute('aria-label', '播放');
+    }
+
+    // 步骤变更检测 → advanceStep 式的体验
+    // 使用显示平滑
+    const diff = totalElapsed - progressDisplay;
+    if (Math.abs(diff) < 0.05) {
+      progressDisplay = totalElapsed;
+    } else {
+      progressDisplay += diff * Math.min(6 * dt, 1);
+    }
+
+    renderFrame();
+    updateProgressUI();
+    updateStatus();
+  }
+
+  // 更新 canvas 尺寸（响应式）
+  const rect = canvas.getBoundingClientRect();
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const targetW = Math.floor(rect.width * dpr);
+  const targetH = Math.floor(rect.height * dpr);
+  if (canvas.width !== targetW || canvas.height !== targetH) {
+    canvas.width = targetW;
+    canvas.height = targetH;
+    renderFrame();
+  }
+
+  requestAnimationFrame(tick);
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  6. 交互事件
+// ═══════════════════════════════════════════════════════════════
+
+// ── 播放/暂停 ──
+playBtn.addEventListener('click', () => {
+  if (totalElapsed >= TOTAL_DURATION) {
+    // 播完了，重置到起点
+    goToTime(0);
+  }
+  isPlaying = !isPlaying;
+  playBtn.textContent = isPlaying ? '⏸' : '▶';
+  playBtn.classList.toggle('playing', isPlaying);
+  playBtn.setAttribute('aria-label', isPlaying ? '暂停' : '播放');
+  lastTimestamp = 0; // 重置时间戳，避免 dt 跳变
+});
+
+// ── 重置 ──
+resetBtn.addEventListener('click', () => {
+  isPlaying = false;
+  playBtn.textContent = '▶';
+  playBtn.classList.remove('playing');
+  playBtn.setAttribute('aria-label', '播放');
+  goToTime(0);
+  document.querySelectorAll('.step-labels span').forEach(el => el.classList.remove('active-label'));
+});
+
+// ── 进度条拖拽/点击（seek）──
+let isSeeking = false;
+
+function seekToClientX(clientX) {
+  const rect = progressTrack.getBoundingClientRect();
+  const ratio = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+  goToTime(ratio * TOTAL_DURATION);
+}
+
+function onSeekStart(e) {
+  if (isPlaying) {
+    isPlaying = false;
+    playBtn.textContent = '▶';
+    playBtn.classList.remove('playing');
+    playBtn.setAttribute('aria-label', '播放');
+  }
+  isSeeking = true;
+  const clientX = (e.touches && e.touches[0]) ? e.touches[0].clientX : e.clientX;
+  seekToClientX(clientX);
+  if (e.touches) e.preventDefault();
+}
+
+function onSeekMove(e) {
+  if (!isSeeking) return;
+  let clientX;
+  if (e.touches && e.touches[0]) { clientX = e.touches[0].clientX; e.preventDefault(); }
+  else { clientX = e.clientX; }
+  seekToClientX(clientX);
+}
+
+function onSeekEnd() { isSeeking = false; }
+
+progressTrack.addEventListener('mousedown', onSeekStart);
+progressTrack.addEventListener('touchstart', onSeekStart, { passive: false });
+document.addEventListener('mousemove', onSeekMove);
+document.addEventListener('mouseup', onSeekEnd);
+document.addEventListener('touchmove', onSeekMove, { passive: false });
+document.addEventListener('touchend', onSeekEnd);
+
+// 键盘支持（左右键微调）
+progressTrack.addEventListener('keydown', (e) => {
+  const step = 0.1; // 步进 100ms
+  if (e.key === 'ArrowRight') {
+    goToTime(Math.min(TOTAL_DURATION, totalElapsed + step));
+    e.preventDefault();
+  } else if (e.key === 'ArrowLeft') {
+    goToTime(Math.max(0, totalElapsed - step));
+    e.preventDefault();
+  }
+});
+
+// 窗口大小变化
+const resizeObserver = new ResizeObserver(() => {
+  const rect = canvas.getBoundingClientRect();
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const targetW = Math.floor(rect.width * dpr);
+  const targetH = Math.floor(rect.height * dpr);
+  if (canvas.width !== targetW || canvas.height !== targetH) {
+    canvas.width = targetW;
+    canvas.height = targetH;
+    renderFrame();
+  }
+});
+resizeObserver.observe(canvas.parentElement);
+
+// ═══════════════════════════════════════════════════════════════
+//  7. 启动
+// ═══════════════════════════════════════════════════════════════
+
+// 隐藏加载遮罩
+loadingOverlay.classList.add('hidden');
+
+// 初始渲染
+setTimeout(() => {
+  const rect = canvas.getBoundingClientRect();
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  canvas.width = Math.floor(rect.width * dpr);
+  canvas.height = Math.floor(rect.height * dpr);
+  renderFrame();
+  updateProgressUI();
+  updateStatus();
+}, 50);
+
+// 启动动画循环
+requestAnimationFrame(tick);
+</script>
+</body>
+</html>

@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>乙醇的催化氧化 — 乙醇氧化为乙醛</title>
+  <style>
+:root {
+  --page-width: 1880px;
+  --canvas-height: 660px;
+  --paper: #f8fbfc;
+  --paper-shadow: #eaf1f3;
+  --graphite: #263746;
+  --muted: #536976;
+  --oxygen-ethanol: #1576b9;
+  --oxygen-external: #d96b16;
+  --water-bond: #237a57;
+  --bond-break: #b9473b;
+  --rule: #afc0c7;
+  --surface: #ffffff;
+  --focus: #d96b16;
+}
+
+* { box-sizing: border-box; }
+html, body { width: 100%; height: 100%; margin: 0; }
+body {
+  overflow: hidden;
+  background-color: var(--paper-shadow);
+  color: var(--graphite);
+  font-family: "Microsoft YaHei", "PingFang SC", "Hiragino Sans GB", sans-serif;
+}
+
+.page {
+  width: min(var(--page-width), calc(100% - 32px));
+  height: 100vh;
+  margin: 0 auto;
+  padding: 12px 0;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto auto auto;
+  gap: 10px;
+}
+
+.hero { position: relative; text-align: center; }
+.hero::before, .hero::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  width: clamp(72px, 12vw, 240px);
+  height: 2px;
+  background: var(--rule);
+}
+.hero::before { right: calc(50% + 400px); }
+.hero::after { left: calc(50% + 400px); }
+.eyebrow, .hero-note { margin: 0; color: var(--muted); font-size: 28px; line-height: 1.2; }
+.eyebrow { color: var(--oxygen-external); font-weight: 800; letter-spacing: 0.12em; }
+h1 { margin: 2px 0 6px; font-family: "STKaiti", "KaiTi", serif; font-size: 52px; line-height: 1.08; letter-spacing: 0.08em; }
+.hero-equation {
+  display: inline-block;
+  margin: 0;
+  padding: 6px 20px;
+  border-top: 2px solid var(--graphite);
+  border-bottom: 2px solid var(--graphite);
+  background: rgba(248, 251, 252, 0.78);
+  color: var(--graphite);
+  font-family: "Cambria Math", "Times New Roman", serif;
+  font-size: 34px;
+  font-weight: 700;
+}
+.hero-note { margin-top: 5px; }
+
+.canvas-card {
+  min-height: 0;
+  height: min(var(--canvas-height), 61vh);
+  border: 2px solid var(--rule);
+  border-radius: 4px;
+  overflow: hidden;
+  position: relative;
+  background: var(--surface);
+  box-shadow: 8px 8px 0 rgba(38, 55, 70, 0.10);
+}
+canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+.loading-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 30px;
+  transition: opacity 180ms ease;
+}
+.loading-overlay.hidden { opacity: 0; pointer-events: none; }
+
+.controls { display: flex; align-items: center; gap: 14px; }
+.ctrl-btn {
+  min-width: 112px;
+  min-height: 60px;
+  border: 3px solid var(--graphite);
+  border-radius: 4px;
+  background: var(--graphite);
+  color: #fff;
+  cursor: pointer;
+  font-size: 28px;
+  font-weight: 800;
+}
+.ctrl-btn:hover { background: var(--oxygen-ethanol); }
+.ctrl-btn-secondary { background: var(--paper); color: var(--graphite); }
+.ctrl-btn-secondary:hover { background: #e3eef2; }
+.ctrl-btn:focus-visible, .progress-track:focus-visible, summary:focus-visible {
+  outline: 4px solid var(--focus);
+  outline-offset: 3px;
+}
+
+.progress-wrap { flex: 1; min-width: 0; }
+.progress-track {
+  position: relative;
+  height: 28px;
+  border: 3px solid var(--graphite);
+  border-radius: 0;
+  background: var(--paper-shadow);
+  cursor: pointer;
+  touch-action: none;
+}
+.progress-fill { width: 0; height: 100%; background: var(--graphite); pointer-events: none; }
+.progress-dot {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 28px;
+  height: 28px;
+  border: 4px solid var(--oxygen-external);
+  border-radius: 50%;
+  background: var(--paper);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+.step-divider { position: absolute; top: 0; bottom: 0; width: 3px; background: var(--paper); }
+.divider-one { left: 22.22%; }
+.divider-two { left: 50%; }
+.divider-three { left: 77.78%; }
+.step-labels { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 6px; color: var(--muted); font-size: 28px; text-align: center; }
+.step-labels span { font-weight: 700; }
+.step-labels .active-label { color: var(--oxygen-external); text-decoration: underline 3px; text-underline-offset: 5px; }
+
+.status-bar {
+  min-height: 58px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 18px;
+  border-left: 8px solid var(--oxygen-external);
+  border-top: 2px solid var(--rule);
+  border-bottom: 2px solid var(--rule);
+  background: rgba(248, 251, 252, 0.92);
+  color: var(--graphite);
+  font-size: 28px;
+  line-height: 1.35;
+  text-align: center;
+}
+.step-badge { padding: 3px 14px; border-radius: 0; background: var(--graphite); color: #fff; font-size: 28px; font-weight: 800; white-space: nowrap; }
+
+.explanation { padding: 9px 18px; border-top: 2px solid var(--rule); border-bottom: 2px solid var(--rule); background: var(--paper); }
+.explanation summary { color: var(--graphite); cursor: pointer; font-size: 28px; font-weight: 800; }
+.explanation p { margin: 8px 0 0; color: var(--graphite); font-size: 28px; line-height: 1.42; }
+
+@media (max-height: 1080px) and (min-width: 901px) {
+  .page { gap: 6px; padding: 6px 0; }
+  h1 { margin: 0 0 2px; line-height: 1; }
+  .hero-equation { padding: 3px 20px; }
+  .hero-note { margin-top: 2px; }
+  .canvas-card { height: min(var(--canvas-height), 55vh); }
+  .ctrl-btn { min-height: 54px; }
+  .step-labels { margin-top: 3px; }
+  .status-bar { min-height: 52px; padding: 4px 18px; line-height: 1.2; }
+  .explanation { padding: 5px 18px; }
+}
+@media (max-height: 900px) {
+  .page { gap: 8px; padding: 8px 0; }
+  .canvas-card { height: min(var(--canvas-height), 54vh); }
+  .explanation { display: none; }
+}
+@media (max-width: 900px) {
+  body { overflow: auto; }
+  .page { height: auto; min-height: 100vh; grid-template-rows: auto auto auto auto auto; }
+  .hero::before, .hero::after { display: none; }
+  .canvas-card { height: 54vw; min-height: 360px; }
+  .controls { flex-wrap: wrap; }
+  .progress-wrap { min-width: 100%; order: 2; }
+  .hero-equation { max-width: 100%; white-space: normal; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}
+
+  </style>
+</head>
+<body>
+  <main class="page">
+    <header class="hero">
+      <p class="eyebrow">原子去向追踪 · 有机反应氧化</p>
+      <h1>乙醇的催化氧化</h1>
+      <p class="hero-equation" aria-label="总反应式：2CH3CH2OH 加 O2 生成 2CH3CHO 加 2H2O">
+        2CH₃CH₂OH + O₂ → 2CH₃CHO + 2H₂O
+      </p>
+      <p class="hero-note">局部示意：追踪一组乙醇中两个氢与两个氧的去向</p>
+    </header>
+
+    <section class="canvas-card" aria-label="乙醇氧化为乙醛的原子变化动画">
+      <div class="loading-overlay" id="loadingOverlay" aria-hidden="true">正在准备反应场景…</div>
+      <canvas id="reactionCanvas" role="img"
+        aria-label="动画显示乙醇羟基氢和α位氢脱离；乙醇中的氧形成乙醛羰基，外来氧与两个氢形成水">
+        您的浏览器不支持 Canvas。动画内容为：乙醇羟基的氢和α位碳上的一个氢脱离，乙醇氧形成乙醛的羰基氧，抽象的外来氧与两个氢形成水。
+      </canvas>
+    </section>
+
+    <section class="controls" aria-label="动画播放控制">
+      <button class="ctrl-btn" id="playBtn" type="button" aria-label="播放动画" title="播放或暂停">播放</button>
+      <button class="ctrl-btn ctrl-btn-secondary" id="resetBtn" type="button" aria-label="重置动画" title="回到起点">重置</button>
+      <div class="progress-wrap">
+        <div class="progress-track" id="progressTrack" role="slider" tabindex="0"
+          aria-label="反应进度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"
+          aria-valuetext="准备：乙醇与外来氧接近">
+          <div class="progress-fill" id="progressFill"></div>
+          <div class="progress-dot" id="progressDot"></div>
+          <span class="step-divider divider-one" aria-hidden="true"></span>
+          <span class="step-divider divider-two" aria-hidden="true"></span>
+          <span class="step-divider divider-three" aria-hidden="true"></span>
+        </div>
+        <div class="step-labels" id="stepLabels" aria-hidden="true">
+          <span data-step="0">① 接近</span>
+          <span data-step="1">② O—H 断裂</span>
+          <span data-step="2">③ α-C—H 断裂</span>
+          <span data-step="3">④ 产物形成</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="status-bar" aria-live="polite" aria-atomic="true">
+      <span class="step-badge" id="stepBadge">准备</span>
+      <span id="statusText">点击“播放”观察乙醇氧化为乙醛时的原子变化。</span>
+    </section>
+
+    <details class="explanation">
+      <summary>反应原理与动画说明</summary>
+      <p>乙醇被氧化为乙醛时，羟基上的氢和与羟基相连的 α 位碳上的一个氢被移除，碳氧单键转变为羰基双键。</p>
+      <p><strong>原子追踪：</strong>乙醇原有的氧保留在碳骨架上，成为乙醛中的羰基氧；画面中的“外来 O”与两个脱离的氢形成水。</p>
+      <p><strong>教学边界：</strong>顶部给出配平总反应式；主画面只示意其中一组乙醇的局部原子去向，不展示 O₂ 断键、催化剂表面或完整逐分子机理。</p>
+    </details>
+  </main>
+  <script>
+'use strict';
+
+const canvas = document.getElementById('reactionCanvas');
+const ctx = canvas.getContext('2d');
+
+const VW = 1600;
+const VH = 680;
+
+const ATOM_IDS = Object.freeze({
+  C_METHYL: 'C_methyl',
+  C_ALPHA: 'C_alpha',
+  O_ETHANOL: 'O_ethanol',
+  H_METHYL_TOP: 'H_methyl_top',
+  H_METHYL_LEFT: 'H_methyl_left',
+  H_METHYL_BOTTOM: 'H_methyl_bottom',
+  H_ALPHA_STAYS: 'H_alpha_stays',
+  H_ALPHA: 'H_alpha_removed',
+  H_HYDROXYL: 'H_hydroxyl',
+  O_EXTERNAL: 'O_external'
+});
+
+const STEP_APPROACH = 4.0;
+const STEP_OH_CLEAVAGE = 5.0;
+const STEP_ALPHA_CLEAVAGE = 5.0;
+const STEP_PRODUCTS = 4.0;
+const STEP_DURATIONS = Object.freeze([
+  STEP_APPROACH,
+  STEP_OH_CLEAVAGE,
+  STEP_ALPHA_CLEAVAGE,
+  STEP_PRODUCTS
+]);
+const STEP_STARTS = Object.freeze([
+  0,
+  STEP_APPROACH,
+  STEP_APPROACH + STEP_OH_CLEAVAGE,
+  STEP_APPROACH + STEP_OH_CLEAVAGE + STEP_ALPHA_CLEAVAGE
+]);
+const TOTAL_DURATION = STEP_DURATIONS.reduce((total, duration) => total + duration, 0);
+const STEP_NAMES = Object.freeze(['外来氧接近', '羟基 O—H 断裂', 'α 位 C—H 断裂', '乙醛和水形成']);
+const STEP_COLORS = Object.freeze(['#263746', '#b9473b', '#b9473b', '#237a57']);
+
+const SNAPSHOTS = Object.freeze({
+  start: Object.freeze({
+    [ATOM_IDS.C_METHYL]: { x: 530, y: 350 }, [ATOM_IDS.C_ALPHA]: { x: 760, y: 350 },
+    [ATOM_IDS.O_ETHANOL]: { x: 990, y: 350 }, [ATOM_IDS.H_METHYL_TOP]: { x: 450, y: 230 },
+    [ATOM_IDS.H_METHYL_LEFT]: { x: 380, y: 350 }, [ATOM_IDS.H_METHYL_BOTTOM]: { x: 450, y: 470 },
+    [ATOM_IDS.H_ALPHA_STAYS]: { x: 735, y: 510 }, [ATOM_IDS.H_ALPHA]: { x: 745, y: 205 },
+    [ATOM_IDS.H_HYDROXYL]: { x: 1130, y: 350 }, [ATOM_IDS.O_EXTERNAL]: { x: 1390, y: 160 }
+  }),
+  approached: Object.freeze({
+    [ATOM_IDS.C_METHYL]: { x: 530, y: 350 }, [ATOM_IDS.C_ALPHA]: { x: 760, y: 350 },
+    [ATOM_IDS.O_ETHANOL]: { x: 990, y: 350 }, [ATOM_IDS.H_METHYL_TOP]: { x: 450, y: 230 },
+    [ATOM_IDS.H_METHYL_LEFT]: { x: 380, y: 350 }, [ATOM_IDS.H_METHYL_BOTTOM]: { x: 450, y: 470 },
+    [ATOM_IDS.H_ALPHA_STAYS]: { x: 735, y: 510 }, [ATOM_IDS.H_ALPHA]: { x: 745, y: 205 },
+    [ATOM_IDS.H_HYDROXYL]: { x: 1130, y: 350 }, [ATOM_IDS.O_EXTERNAL]: { x: 1320, y: 170 }
+  }),
+  ohCleaved: Object.freeze({
+    [ATOM_IDS.C_METHYL]: { x: 530, y: 350 }, [ATOM_IDS.C_ALPHA]: { x: 760, y: 350 },
+    [ATOM_IDS.O_ETHANOL]: { x: 990, y: 350 }, [ATOM_IDS.H_METHYL_TOP]: { x: 450, y: 230 },
+    [ATOM_IDS.H_METHYL_LEFT]: { x: 380, y: 350 }, [ATOM_IDS.H_METHYL_BOTTOM]: { x: 450, y: 470 },
+    [ATOM_IDS.H_ALPHA_STAYS]: { x: 735, y: 510 }, [ATOM_IDS.H_ALPHA]: { x: 745, y: 205 },
+    [ATOM_IDS.H_HYDROXYL]: { x: 1280, y: 245 }, [ATOM_IDS.O_EXTERNAL]: { x: 1320, y: 170 }
+  }),
+  alphaCleaved: Object.freeze({
+    [ATOM_IDS.C_METHYL]: { x: 470, y: 360 }, [ATOM_IDS.C_ALPHA]: { x: 700, y: 360 },
+    [ATOM_IDS.O_ETHANOL]: { x: 930, y: 360 }, [ATOM_IDS.H_METHYL_TOP]: { x: 390, y: 240 },
+    [ATOM_IDS.H_METHYL_LEFT]: { x: 320, y: 360 }, [ATOM_IDS.H_METHYL_BOTTOM]: { x: 390, y: 480 },
+    [ATOM_IDS.H_ALPHA_STAYS]: { x: 675, y: 520 }, [ATOM_IDS.H_ALPHA]: { x: 1295, y: 320 },
+    [ATOM_IDS.H_HYDROXYL]: { x: 1280, y: 245 }, [ATOM_IDS.O_EXTERNAL]: { x: 1320, y: 280 }
+  }),
+  products: Object.freeze({
+    [ATOM_IDS.C_METHYL]: { x: 390, y: 370 }, [ATOM_IDS.C_ALPHA]: { x: 620, y: 370 },
+    [ATOM_IDS.O_ETHANOL]: { x: 850, y: 370 }, [ATOM_IDS.H_METHYL_TOP]: { x: 310, y: 250 },
+    [ATOM_IDS.H_METHYL_LEFT]: { x: 240, y: 370 }, [ATOM_IDS.H_METHYL_BOTTOM]: { x: 310, y: 490 },
+    [ATOM_IDS.H_ALPHA_STAYS]: { x: 620, y: 540 }, [ATOM_IDS.H_ALPHA]: { x: 1250, y: 380 },
+    [ATOM_IDS.H_HYDROXYL]: { x: 1370, y: 285 }, [ATOM_IDS.O_EXTERNAL]: { x: 1320, y: 340 }
+  })
+});
+
+function clamp(value, min, max) { return Math.max(min, Math.min(max, value)); }
+function lerp(start, end, progress) { return start + (end - start) * progress; }
+function easeInOut(progress) { return progress < 0.5 ? 2 * progress * progress : 1 - Math.pow(-2 * progress + 2, 2) / 2; }
+function lerpPose(from, to, progress) { return { x: lerp(from.x, to.x, progress), y: lerp(from.y, to.y, progress) }; }
+function getStepFromTime(time) {
+  const safeTime = clamp(time, 0, TOTAL_DURATION);
+  for (let index = STEP_STARTS.length - 1; index >= 0; index -= 1) if (safeTime >= STEP_STARTS[index]) return index;
+  return 0;
+}
+function getLocalProgress(time, stepIndex) {
+  return clamp((clamp(time, 0, TOTAL_DURATION) - STEP_STARTS[stepIndex]) / STEP_DURATIONS[stepIndex], 0, 1);
+}
+function interpolateSnapshot(from, to, progress) {
+  const pose = {};
+  Object.keys(ATOM_IDS).forEach((key) => { const id = ATOM_IDS[key]; pose[id] = lerpPose(from[id], to[id], progress); });
+  return pose;
+}
+function getSnapshot(time) {
+  const step = getStepFromTime(time);
+  const progress = easeInOut(getLocalProgress(time, step));
+  if (step === 0) return interpolateSnapshot(SNAPSHOTS.start, SNAPSHOTS.approached, progress);
+  if (step === 1) return interpolateSnapshot(SNAPSHOTS.approached, SNAPSHOTS.ohCleaved, progress);
+  if (step === 2) return interpolateSnapshot(SNAPSHOTS.ohCleaved, SNAPSHOTS.alphaCleaved, progress);
+  return interpolateSnapshot(SNAPSHOTS.alphaCleaved, SNAPSHOTS.products, progress);
+}
+
+window.__ethanolDebug = Object.freeze({ ATOM_IDS, STEP_DURATIONS, STEP_STARTS, TOTAL_DURATION, getStepFromTime, getLocalProgress, getSnapshot });
+
+function drawBond(from, to, options) {
+  const settings = Object.assign({ color: '#66788a', width: 7, opacity: 1, progress: 1 }, options);
+  const end = lerpPose(from, to, clamp(settings.progress, 0, 1));
+  ctx.save(); ctx.globalAlpha = settings.opacity; ctx.strokeStyle = settings.color; ctx.lineWidth = settings.width; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(from.x, from.y); ctx.lineTo(end.x, end.y); ctx.stroke(); ctx.restore();
+}
+function drawDoubleBond(from, to, options) {
+  const settings = Object.assign({ color: '#1576b9', width: 6, opacity: 1, secondOpacity: 1 }, options);
+  drawBond(from, to, settings);
+  const dx = to.x - from.x; const dy = to.y - from.y; const length = Math.hypot(dx, dy) || 1;
+  const normalX = -dy / length * 15; const normalY = dx / length * 15;
+  drawBond({ x: from.x + normalX, y: from.y + normalY }, { x: to.x + normalX, y: to.y + normalY }, Object.assign({}, settings, { opacity: settings.secondOpacity }));
+}
+function drawAtom(atomId, pose, options) {
+  const settings = Object.assign({ label: 'H', fill: '#f8fbfc', text: '#263746', radius: 23, opacity: 1, ring: false }, options);
+  ctx.save(); ctx.globalAlpha = settings.opacity;
+  if (settings.ring) { ctx.beginPath(); ctx.arc(pose.x, pose.y, settings.radius + 9, 0, Math.PI * 2); ctx.strokeStyle = '#d96b16'; ctx.lineWidth = 5; ctx.stroke(); }
+  ctx.beginPath(); ctx.arc(pose.x, pose.y, settings.radius, 0, Math.PI * 2); ctx.fillStyle = settings.fill; ctx.fill();
+  ctx.strokeStyle = 'rgba(0, 0, 0, 0.20)'; ctx.lineWidth = 2; ctx.stroke();
+  ctx.fillStyle = settings.text; ctx.font = `800 ${settings.radius > 25 ? 34 : 28}px "Microsoft YaHei", sans-serif`;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(settings.label, pose.x, pose.y + 1); ctx.restore();
+}
+
+function drawAtomSet(pose) {
+  const carbon = { label: 'C', fill: '#263746', text: '#fff', radius: 32 };
+  const hydrogen = { label: 'H', fill: '#f8fbfc', text: '#263746', radius: 23 };
+  drawAtom(ATOM_IDS.C_METHYL, pose[ATOM_IDS.C_METHYL], carbon); drawAtom(ATOM_IDS.C_ALPHA, pose[ATOM_IDS.C_ALPHA], carbon);
+  drawAtom(ATOM_IDS.O_ETHANOL, pose[ATOM_IDS.O_ETHANOL], { label: 'O', fill: '#1576b9', text: '#fff', radius: 31 });
+  [ATOM_IDS.H_METHYL_TOP, ATOM_IDS.H_METHYL_LEFT, ATOM_IDS.H_METHYL_BOTTOM, ATOM_IDS.H_ALPHA_STAYS, ATOM_IDS.H_ALPHA, ATOM_IDS.H_HYDROXYL].forEach((id) => drawAtom(id, pose[id], hydrogen));
+  drawAtom(ATOM_IDS.O_EXTERNAL, pose[ATOM_IDS.O_EXTERNAL], { label: 'O', fill: '#d96b16', text: '#fff', radius: 31, ring: true });
+}
+function drawEthanolBonds(pose, bondState) {
+  const state = Object.assign({ ohOpacity: 1, alphaHOpacity: 1, coSecondOpacity: 0, waterOH1Opacity: 0, waterOH2Opacity: 0 }, bondState);
+  drawBond(pose[ATOM_IDS.C_METHYL], pose[ATOM_IDS.C_ALPHA], { color: '#263746', width: 8 });
+  [ATOM_IDS.H_METHYL_TOP, ATOM_IDS.H_METHYL_LEFT, ATOM_IDS.H_METHYL_BOTTOM].forEach((id) => drawBond(pose[ATOM_IDS.C_METHYL], pose[id], { color: '#71818a', width: 5 }));
+  drawBond(pose[ATOM_IDS.C_ALPHA], pose[ATOM_IDS.H_ALPHA_STAYS], { color: '#71818a', width: 5 });
+  drawBond(pose[ATOM_IDS.C_ALPHA], pose[ATOM_IDS.H_ALPHA], { color: '#b9473b', width: 6, opacity: state.alphaHOpacity });
+  drawDoubleBond(pose[ATOM_IDS.C_ALPHA], pose[ATOM_IDS.O_ETHANOL], { color: '#1576b9', width: 7, opacity: 1, secondOpacity: state.coSecondOpacity });
+  drawBond(pose[ATOM_IDS.O_ETHANOL], pose[ATOM_IDS.H_HYDROXYL], { color: '#b9473b', width: 6, opacity: state.ohOpacity });
+  drawBond(pose[ATOM_IDS.O_EXTERNAL], pose[ATOM_IDS.H_HYDROXYL], { color: '#237a57', width: 6, opacity: state.waterOH1Opacity });
+  drawBond(pose[ATOM_IDS.O_EXTERNAL], pose[ATOM_IDS.H_ALPHA], { color: '#237a57', width: 6, opacity: state.waterOH2Opacity });
+}
+function drawDashedRoute(from, to, opacity) {
+  ctx.save(); ctx.globalAlpha = opacity; ctx.strokeStyle = '#d96b16'; ctx.lineWidth = 3; ctx.setLineDash([10, 10]);
+  ctx.beginPath(); ctx.moveTo(from.x, from.y); ctx.lineTo(to.x, to.y); ctx.stroke(); ctx.setLineDash([]); ctx.restore();
+}
+function drawStepApproach(localProgress) {
+  const pose = getSnapshot(localProgress * STEP_DURATIONS[0]);
+  drawDashedRoute(SNAPSHOTS.start[ATOM_IDS.O_EXTERNAL], SNAPSHOTS.approached[ATOM_IDS.O_EXTERNAL], 0.35 + localProgress * 0.45);
+  drawEthanolBonds(pose, {}); drawAtomSet(pose);
+}
+function drawStepOHCleavage(localProgress) {
+  const pose = getSnapshot(STEP_STARTS[1] + localProgress * STEP_DURATIONS[1]); const breakProgress = clamp((localProgress - 0.25) / 0.55, 0, 1);
+  drawEthanolBonds(pose, { ohOpacity: 1 - breakProgress }); drawAtomSet(pose);
+}
+function drawStepAlphaCleavage(localProgress) {
+  const pose = getSnapshot(STEP_STARTS[2] + localProgress * STEP_DURATIONS[2]); const breakProgress = clamp((localProgress - 0.12) / 0.50, 0, 1); const doubleBondProgress = clamp((localProgress - 0.35) / 0.55, 0, 1);
+  drawEthanolBonds(pose, { ohOpacity: 0, alphaHOpacity: 1 - breakProgress, coSecondOpacity: doubleBondProgress }); drawAtomSet(pose);
+}
+function drawStepProducts(localProgress) {
+  const pose = getSnapshot(STEP_STARTS[3] + localProgress * STEP_DURATIONS[3]); const waterBondProgress = clamp((localProgress - 0.20) / 0.45, 0, 1);
+  drawEthanolBonds(pose, { ohOpacity: 0, alphaHOpacity: 0, coSecondOpacity: 1, waterOH1Opacity: waterBondProgress, waterOH2Opacity: waterBondProgress }); drawAtomSet(pose);
+}
+function drawReactionScene(time) {
+  const safeTime = clamp(time, 0, TOTAL_DURATION); const step = getStepFromTime(safeTime); const localProgress = getLocalProgress(safeTime, step);
+  if (step === 0) drawStepApproach(localProgress); else if (step === 1) drawStepOHCleavage(localProgress); else if (step === 2) drawStepAlphaCleavage(localProgress); else drawStepProducts(localProgress);
+}
+function resizeCanvas() {
+  const rect = canvas.getBoundingClientRect(); const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  canvas.width = Math.max(1, Math.floor(rect.width * dpr)); canvas.height = Math.max(1, Math.floor(rect.height * dpr));
+}
+function renderFrame(time) {
+  const scale = Math.min(canvas.width / VW, canvas.height / VH); const offsetX = (canvas.width - VW * scale) / 2; const offsetY = (canvas.height - VH * scale) / 2;
+  ctx.clearRect(0, 0, canvas.width, canvas.height); ctx.save(); ctx.translate(offsetX, offsetY); ctx.scale(scale, scale); ctx.fillStyle = '#f8fbfc'; ctx.fillRect(0, 0, VW, VH); drawReactionScene(time); ctx.restore();
+}
+
+const playBtn = document.getElementById('playBtn');
+const resetBtn = document.getElementById('resetBtn');
+const progressTrack = document.getElementById('progressTrack');
+const progressFill = document.getElementById('progressFill');
+const progressDot = document.getElementById('progressDot');
+const stepLabels = document.getElementById('stepLabels');
+const stepBadge = document.getElementById('stepBadge');
+const statusText = document.getElementById('statusText');
+const loadingOverlay = document.getElementById('loadingOverlay');
+let totalElapsed = 0;
+let progressDisplay = 0;
+let isPlaying = false;
+let isSeeking = false;
+let lastTimestamp = 0;
+
+function getStatusMessage(step) {
+  return ['外来 O 接近乙醇；蓝色 O 是乙醇中的氧，橙色环 O 是形成水的外来氧。', '羟基上的 H 脱离：乙醇中的 O—H 键正在断裂。', 'α 位碳上的一个 H 脱离，同时乙醇中的 C—O 单键转变为 C=O。', '乙醛和水形成：乙醇中的氧成为羰基氧，外来氧成为水中的氧。'][step];
+}
+function updateProgressUI() {
+  const percent = TOTAL_DURATION === 0 ? 0 : progressDisplay / TOTAL_DURATION * 100;
+  progressFill.style.width = `${percent}%`; progressDot.style.left = `${percent}%`; progressTrack.setAttribute('aria-valuenow', String(Math.round(percent)));
+  const step = getStepFromTime(totalElapsed); progressTrack.setAttribute('aria-valuetext', `${STEP_NAMES[step]}：${getStatusMessage(step)}`);
+}
+function updateStatus() {
+  const step = getStepFromTime(totalElapsed);
+  if (totalElapsed <= 0) { stepBadge.textContent = '准备'; stepBadge.style.background = '#263746'; statusText.textContent = '点击“播放”观察乙醇氧化为乙醛时的原子变化。'; }
+  else if (totalElapsed >= TOTAL_DURATION) { stepBadge.textContent = '完成'; stepBadge.style.background = STEP_COLORS[3]; statusText.textContent = '反应示意完成：乙醇氧成为乙醛羰基氧，外来氧与两个脱离的氢形成水。'; }
+  else { stepBadge.textContent = `阶段 ${step + 1}`; stepBadge.style.background = STEP_COLORS[step]; statusText.textContent = getStatusMessage(step); }
+  Array.from(stepLabels.querySelectorAll('span')).forEach((label, index) => label.classList.toggle('active-label', totalElapsed >= TOTAL_DURATION || index === step));
+}
+function setPlayButton(playing) { playBtn.textContent = playing ? '暂停' : '播放'; playBtn.setAttribute('aria-label', playing ? '暂停动画' : '播放动画'); playBtn.setAttribute('aria-pressed', String(playing)); }
+function goToTime(time) { totalElapsed = clamp(time, 0, TOTAL_DURATION); progressDisplay = totalElapsed; renderFrame(totalElapsed); updateProgressUI(); updateStatus(); }
+function resetAnimation() { isPlaying = false; lastTimestamp = 0; setPlayButton(false); goToTime(0); }
+function tick(timestamp) {
+  if (!lastTimestamp) lastTimestamp = timestamp;
+  const deltaSeconds = Math.min((timestamp - lastTimestamp) / 1000, 0.05); lastTimestamp = timestamp;
+  if (isPlaying) {
+    totalElapsed = Math.min(TOTAL_DURATION, totalElapsed + deltaSeconds); const difference = totalElapsed - progressDisplay;
+    progressDisplay = Math.abs(difference) < 0.05 ? totalElapsed : progressDisplay + difference * Math.min(6 * deltaSeconds, 1);
+    renderFrame(totalElapsed); updateProgressUI(); updateStatus();
+    if (totalElapsed >= TOTAL_DURATION) { isPlaying = false; setPlayButton(false); }
+  }
+  requestAnimationFrame(tick);
+}
+function pauseForSeek() { if (isPlaying) { isPlaying = false; setPlayButton(false); } }
+function seekToClientX(clientX) { const rect = progressTrack.getBoundingClientRect(); goToTime(clamp((clientX - rect.left) / rect.width, 0, 1) * TOTAL_DURATION); }
+
+playBtn.addEventListener('click', () => { if (totalElapsed >= TOTAL_DURATION) goToTime(0); isPlaying = !isPlaying; lastTimestamp = 0; setPlayButton(isPlaying); });
+resetBtn.addEventListener('click', resetAnimation);
+progressTrack.addEventListener('pointerdown', (event) => { pauseForSeek(); isSeeking = true; progressTrack.setPointerCapture(event.pointerId); seekToClientX(event.clientX); event.preventDefault(); });
+progressTrack.addEventListener('pointermove', (event) => { if (isSeeking) { seekToClientX(event.clientX); event.preventDefault(); } });
+function endSeek(event) { if (isSeeking) { isSeeking = false; if (progressTrack.hasPointerCapture(event.pointerId)) progressTrack.releasePointerCapture(event.pointerId); } }
+progressTrack.addEventListener('pointerup', endSeek); progressTrack.addEventListener('pointercancel', endSeek);
+progressTrack.addEventListener('keydown', (event) => {
+  const seekStep = 0.25;
+  if (event.key === 'ArrowRight') goToTime(totalElapsed + seekStep); else if (event.key === 'ArrowLeft') goToTime(totalElapsed - seekStep); else if (event.key === 'Home') goToTime(0); else if (event.key === 'End') goToTime(TOTAL_DURATION); else return;
+  pauseForSeek(); event.preventDefault();
+});
+
+const resizeObserver = new ResizeObserver(() => { resizeCanvas(); renderFrame(totalElapsed); });
+resizeObserver.observe(canvas.parentElement);
+resizeCanvas(); goToTime(0); loadingOverlay.classList.add('hidden'); requestAnimationFrame(tick);
+  </script>
+</body>
+</html>
