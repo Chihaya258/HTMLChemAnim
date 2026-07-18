@@ -136,10 +136,9 @@ canvas { display: block; width: 100%; height: 100%; touch-action: none; }
   pointer-events: none;
 }
 .step-divider { position: absolute; top: 0; bottom: 0; width: 3px; background: var(--paper); }
-.divider-one { left: 22.22%; }
-.divider-two { left: 50%; }
-.divider-three { left: 77.78%; }
-.step-labels { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 6px; color: var(--muted); font-size: 28px; text-align: center; }
+.divider-one { left: 30.77%; }
+.divider-two { left: 69.23%; }
+.step-labels { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 6px; color: var(--muted); font-size: 28px; text-align: center; }
 .step-labels span { font-weight: 700; }
 .step-labels .active-label { color: var(--oxygen-external); text-decoration: underline 3px; text-underline-offset: 5px; }
 
@@ -226,13 +225,11 @@ canvas { display: block; width: 100%; height: 100%; touch-action: none; }
           <div class="progress-dot" id="progressDot"></div>
           <span class="step-divider divider-one" aria-hidden="true"></span>
           <span class="step-divider divider-two" aria-hidden="true"></span>
-          <span class="step-divider divider-three" aria-hidden="true"></span>
         </div>
         <div class="step-labels" id="stepLabels" aria-hidden="true">
           <span data-step="0">① 接近</span>
-          <span data-step="1">② O—H 断裂</span>
-          <span data-step="2">③ α-C—H 断裂</span>
-          <span data-step="3">④ 产物形成</span>
+          <span data-step="1">② 两个氢先后断裂</span>
+          <span data-step="2">③ 产物形成</span>
         </div>
       </div>
     </section>
@@ -272,24 +269,21 @@ const ATOM_IDS = Object.freeze({
 });
 
 const STEP_APPROACH = 4.0;
-const STEP_OH_CLEAVAGE = 5.0;
-const STEP_ALPHA_CLEAVAGE = 5.0;
+const STEP_H_CLEAVAGE = 5.0;
 const STEP_PRODUCTS = 4.0;
 const STEP_DURATIONS = Object.freeze([
   STEP_APPROACH,
-  STEP_OH_CLEAVAGE,
-  STEP_ALPHA_CLEAVAGE,
+  STEP_H_CLEAVAGE,
   STEP_PRODUCTS
 ]);
 const STEP_STARTS = Object.freeze([
   0,
   STEP_APPROACH,
-  STEP_APPROACH + STEP_OH_CLEAVAGE,
-  STEP_APPROACH + STEP_OH_CLEAVAGE + STEP_ALPHA_CLEAVAGE
+  STEP_APPROACH + STEP_H_CLEAVAGE
 ]);
 const TOTAL_DURATION = STEP_DURATIONS.reduce((total, duration) => total + duration, 0);
-const STEP_NAMES = Object.freeze(['外来氧接近', '羟基 O—H 断裂', 'α 位 C—H 断裂', '乙醛和水形成']);
-const STEP_COLORS = Object.freeze(['#263746', '#b9473b', '#b9473b', '#237a57']);
+const STEP_NAMES = Object.freeze(['外来氧接近', '两个氢先后断裂（动画中同时演示）', '乙醛和水形成']);
+const STEP_COLORS = Object.freeze(['#263746', '#b9473b', '#237a57']);
 
 const SNAPSHOTS = Object.freeze({
   start: Object.freeze({
@@ -306,19 +300,12 @@ const SNAPSHOTS = Object.freeze({
     [ATOM_IDS.H_ALPHA_STAYS]: { x: 760, y: 510 }, [ATOM_IDS.H_ALPHA]: { x: 760, y: 205 },
     [ATOM_IDS.H_HYDROXYL]: { x: 1130, y: 350 }, [ATOM_IDS.O_EXTERNAL]: { x: 1320, y: 170 }
   }),
-  ohCleaved: Object.freeze({
-    [ATOM_IDS.C_METHYL]: { x: 530, y: 350 }, [ATOM_IDS.C_ALPHA]: { x: 760, y: 350 },
-    [ATOM_IDS.O_ETHANOL]: { x: 990, y: 350 }, [ATOM_IDS.H_METHYL_TOP]: { x: 530, y: 230 },
-    [ATOM_IDS.H_METHYL_LEFT]: { x: 380, y: 350 }, [ATOM_IDS.H_METHYL_BOTTOM]: { x: 530, y: 470 },
-    [ATOM_IDS.H_ALPHA_STAYS]: { x: 760, y: 510 }, [ATOM_IDS.H_ALPHA]: { x: 760, y: 205 },
-    [ATOM_IDS.H_HYDROXYL]: { x: 1280, y: 350 }, [ATOM_IDS.O_EXTERNAL]: { x: 1320, y: 170 }
-  }),
   alphaCleaved: Object.freeze({
     [ATOM_IDS.C_METHYL]: { x: 470, y: 360 }, [ATOM_IDS.C_ALPHA]: { x: 700, y: 360 },
     [ATOM_IDS.O_ETHANOL]: { x: 930, y: 360 }, [ATOM_IDS.H_METHYL_TOP]: { x: 470, y: 240 },
     [ATOM_IDS.H_METHYL_LEFT]: { x: 320, y: 360 }, [ATOM_IDS.H_METHYL_BOTTOM]: { x: 470, y: 480 },
     [ATOM_IDS.H_ALPHA_STAYS]: { x: 700, y: 520 }, [ATOM_IDS.H_ALPHA]: { x: 700, y: 150 },
-    [ATOM_IDS.H_HYDROXYL]: { x: 1280, y: 245 }, [ATOM_IDS.O_EXTERNAL]: { x: 1320, y: 280 }
+    [ATOM_IDS.H_HYDROXYL]: { x: 1280, y: 360 }, [ATOM_IDS.O_EXTERNAL]: { x: 1320, y: 280 }
   }),
   products: Object.freeze({
     [ATOM_IDS.C_METHYL]: { x: 390, y: 370 }, [ATOM_IDS.C_ALPHA]: { x: 620, y: 370 },
@@ -350,8 +337,7 @@ function getSnapshot(time) {
   const step = getStepFromTime(time);
   const progress = easeInOut(getLocalProgress(time, step));
   if (step === 0) return interpolateSnapshot(SNAPSHOTS.start, SNAPSHOTS.approached, progress);
-  if (step === 1) return interpolateSnapshot(SNAPSHOTS.approached, SNAPSHOTS.ohCleaved, progress);
-  if (step === 2) return interpolateSnapshot(SNAPSHOTS.ohCleaved, SNAPSHOTS.alphaCleaved, progress);
+  if (step === 1) return interpolateSnapshot(SNAPSHOTS.approached, SNAPSHOTS.alphaCleaved, progress);
   return interpolateSnapshot(SNAPSHOTS.alphaCleaved, SNAPSHOTS.products, progress);
 }
 
@@ -408,21 +394,19 @@ function drawStepApproach(localProgress) {
   drawDashedRoute(SNAPSHOTS.start[ATOM_IDS.O_EXTERNAL], SNAPSHOTS.approached[ATOM_IDS.O_EXTERNAL], 0.35 + localProgress * 0.45);
   drawEthanolBonds(pose, {}); drawAtomSet(pose);
 }
-function drawStepOHCleavage(localProgress) {
-  const pose = getSnapshot(STEP_STARTS[1] + localProgress * STEP_DURATIONS[1]); const breakProgress = clamp((localProgress - 0.25) / 0.55, 0, 1);
-  drawEthanolBonds(pose, { ohOpacity: 1 - breakProgress }); drawAtomSet(pose);
-}
-function drawStepAlphaCleavage(localProgress) {
-  const pose = getSnapshot(STEP_STARTS[2] + localProgress * STEP_DURATIONS[2]); const breakProgress = clamp((localProgress - 0.12) / 0.50, 0, 1); const doubleBondProgress = clamp((localProgress - 0.35) / 0.55, 0, 1);
-  drawEthanolBonds(pose, { ohOpacity: 0, alphaHOpacity: 1 - breakProgress, coSecondOpacity: doubleBondProgress }); drawAtomSet(pose);
+function drawStepHydrogenCleavage(localProgress) {
+  const pose = getSnapshot(STEP_STARTS[1] + localProgress * STEP_DURATIONS[1]);
+  const breakProgress = clamp((localProgress - 0.18) / 0.57, 0, 1);
+  const doubleBondProgress = clamp((localProgress - 0.40) / 0.42, 0, 1);
+  drawEthanolBonds(pose, { ohOpacity: 1 - breakProgress, alphaHOpacity: 1 - breakProgress, coSecondOpacity: doubleBondProgress }); drawAtomSet(pose);
 }
 function drawStepProducts(localProgress) {
-  const pose = getSnapshot(STEP_STARTS[3] + localProgress * STEP_DURATIONS[3]); const waterBondProgress = clamp((localProgress - 0.20) / 0.45, 0, 1);
+  const pose = getSnapshot(STEP_STARTS[2] + localProgress * STEP_DURATIONS[2]); const waterBondProgress = clamp((localProgress - 0.20) / 0.45, 0, 1);
   drawEthanolBonds(pose, { ohOpacity: 0, alphaHOpacity: 0, coSecondOpacity: 1, waterOH1Opacity: waterBondProgress, waterOH2Opacity: waterBondProgress }); drawAtomSet(pose);
 }
 function drawReactionScene(time) {
   const safeTime = clamp(time, 0, TOTAL_DURATION); const step = getStepFromTime(safeTime); const localProgress = getLocalProgress(safeTime, step);
-  if (step === 0) drawStepApproach(localProgress); else if (step === 1) drawStepOHCleavage(localProgress); else if (step === 2) drawStepAlphaCleavage(localProgress); else drawStepProducts(localProgress);
+  if (step === 0) drawStepApproach(localProgress); else if (step === 1) drawStepHydrogenCleavage(localProgress); else drawStepProducts(localProgress);
 }
 function resizeCanvas() {
   const rect = canvas.getBoundingClientRect(); const dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -449,7 +433,7 @@ let isSeeking = false;
 let lastTimestamp = 0;
 
 function getStatusMessage(step) {
-  return ['外来 O 接近乙醇；蓝色 O 是乙醇中的氧，橙色环 O 是形成水的外来氧。', '羟基上的 H 脱离：乙醇中的 O—H 键正在断裂。', 'α 位碳上的一个 H 脱离，同时乙醇中的 C—O 单键转变为 C=O。', '乙醛和水形成：乙醇中的氧成为羰基氧，外来氧成为水中的氧。'][step];
+  return ['外来 O 接近乙醇；蓝色 O 是乙醇中的氧，橙色环 O 是形成水的外来氧。', '羟基上的 H 与 α 位碳上的一个 H 在实际反应中先后脱离；为便于观察，动画将两者同时演示，乙醇中的 C—O 单键开始转变为 C=O。', '乙醛和水形成：乙醇中的氧成为羰基氧，外来氧成为水中的氧。'][step];
 }
 function updateProgressUI() {
   const percent = TOTAL_DURATION === 0 ? 0 : progressDisplay / TOTAL_DURATION * 100;
@@ -459,7 +443,7 @@ function updateProgressUI() {
 function updateStatus() {
   const step = getStepFromTime(totalElapsed);
   if (totalElapsed <= 0) { stepBadge.textContent = '准备'; stepBadge.style.background = '#263746'; statusText.textContent = '点击“播放”观察乙醇氧化为乙醛时的原子变化。'; }
-  else if (totalElapsed >= TOTAL_DURATION) { stepBadge.textContent = '完成'; stepBadge.style.background = STEP_COLORS[3]; statusText.textContent = '反应示意完成：乙醇氧成为乙醛羰基氧，外来氧与两个脱离的氢形成水。'; }
+  else if (totalElapsed >= TOTAL_DURATION) { stepBadge.textContent = '完成'; stepBadge.style.background = STEP_COLORS[2]; statusText.textContent = '反应示意完成：乙醇氧成为乙醛羰基氧，外来氧与两个脱离的氢形成水。'; }
   else { stepBadge.textContent = `阶段 ${step + 1}`; stepBadge.style.background = STEP_COLORS[step]; statusText.textContent = getStatusMessage(step); }
   Array.from(stepLabels.querySelectorAll('span')).forEach((label, index) => label.classList.toggle('active-label', totalElapsed >= TOTAL_DURATION || index === step));
 }
