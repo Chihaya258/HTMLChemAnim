@@ -451,7 +451,11 @@
     }
     function drawEthylenebonds(pose, options = {}) {
       const settings = Object.assign({ piOpacity: 1, leftHalfOpacity: 0, rightHalfOpacity: 0, leftHalfDirection: { x: 1, y: 0 }, rightHalfDirection: { x: -1, y: 0 }, carbonHalfLength: CARBON_HALF_LENGTH, carbonHalfOffset: { x: 0, y: 16 } }, options);
-      drawDoubleBond(pose[ATOM_IDS.C_LEFT], pose[ATOM_IDS.C_RIGHT], { color: '#263746', width: 8, secondOpacity: settings.piOpacity });
+      if (settings.piOpacity > 0) {
+        drawDoubleBond(pose[ATOM_IDS.C_LEFT], pose[ATOM_IDS.C_RIGHT], { color: '#263746', width: 8, secondOpacity: settings.piOpacity });
+      } else {
+        drawBond(pose[ATOM_IDS.C_LEFT], pose[ATOM_IDS.C_RIGHT], { color: '#263746', width: 8 });
+      }
       drawBond(pose[ATOM_IDS.C_LEFT], pose[ATOM_IDS.H_LEFT_TOP], { color: '#71818a', width: 5 });
       drawBond(pose[ATOM_IDS.C_LEFT], pose[ATOM_IDS.H_LEFT_BOTTOM], { color: '#71818a', width: 5 });
       drawBond(pose[ATOM_IDS.C_RIGHT], pose[ATOM_IDS.H_RIGHT_TOP], { color: '#71818a', width: 5 });
