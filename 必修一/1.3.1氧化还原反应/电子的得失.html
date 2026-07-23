@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>氧化还原反应：电子的得失</title>
+  <style>
+    :root {
+      --page: #f0f2f5;
+      --surface: #ffffff;
+      --scene: #f5f8ff;
+      --ink: #263746;
+      --muted: #556975;
+      --rule: #bdc8d0;
+      --na: #c76724;
+      --cl: #167d78;
+      --electron: #d89616;
+      --focus: #b84e22;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; margin: 0; }
+    body {
+      overflow: hidden;
+      background: var(--page);
+      color: var(--ink);
+      font-family: "Microsoft YaHei", "PingFang SC", "Hiragino Sans GB", sans-serif;
+    }
+    .page {
+      width: min(1880px, calc(100% - 32px));
+      height: 100vh;
+      margin: 0 auto;
+      padding: 12px 0;
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr) auto auto auto;
+      gap: 10px;
+    }
+    .hero { text-align: center; }
+    .eyebrow, .hero-note {
+      margin: 0;
+      color: var(--muted);
+      font-size: 28px;
+      line-height: 1.2;
+    }
+    .eyebrow { color: var(--electron); font-weight: 800; letter-spacing: .12em; }
+    h1 {
+      margin: 2px 0 6px;
+      font-family: "STKaiti", "KaiTi", serif;
+      font-size: 52px;
+      line-height: 1.08;
+      letter-spacing: .08em;
+    }
+    .hero-equation {
+      display: inline-block;
+      margin: 0;
+      padding: 6px 20px;
+      border-top: 2px solid var(--ink);
+      border-bottom: 2px solid var(--ink);
+      font-family: "Cambria Math", "Times New Roman", serif;
+      font-size: 34px;
+      font-weight: 700;
+    }
+    .hero-note { margin-top: 5px; }
+    .canvas-card {
+      width: min(100%, calc(45vh * 1600 / 680));
+      aspect-ratio: 1600 / 680;
+      height: auto;
+      min-height: 0;
+      margin: 0 auto;
+      overflow: hidden;
+      position: relative;
+      border: 2px solid var(--rule);
+      border-radius: 4px;
+      background: var(--surface);
+      box-shadow: 8px 8px 0 rgba(38, 55, 70, .1);
+    }
+    canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+    .controls { display: flex; align-items: center; gap: 12px; }
+    .ctrl-btn {
+      min-width: 112px;
+      min-height: 58px;
+      border: 3px solid var(--ink);
+      border-radius: 4px;
+      background: var(--ink);
+      color: #fff;
+      cursor: pointer;
+      font-size: 28px;
+      font-weight: 800;
+    }
+    .ctrl-btn-secondary { background: var(--surface); color: var(--ink); }
+    .ctrl-btn:hover { background: var(--na); color: #fff; }
+    .ctrl-btn-secondary:hover { background: #e7eff2; color: var(--ink); }
+    .ctrl-btn:focus-visible, .progress-track:focus-visible {
+      outline: 4px solid var(--focus);
+      outline-offset: 3px;
+    }
+    .progress-wrap { flex: 1; min-width: 0; }
+    .progress-track {
+      height: 28px;
+      position: relative;
+      border: 3px solid var(--ink);
+      background: #e3e9ed;
+      cursor: pointer;
+      touch-action: none;
+    }
+    .progress-fill { width: 0; height: 100%; background: var(--ink); pointer-events: none; }
+    .progress-dot {
+      width: 28px;
+      height: 28px;
+      position: absolute;
+      top: 50%;
+      left: 0;
+      border: 4px solid var(--electron);
+      border-radius: 50%;
+      background: var(--surface);
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+    }
+    .step-divider { position: absolute; top: 0; bottom: 0; width: 3px; background: var(--surface); }
+    .step-labels {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 6px;
+      margin-top: 5px;
+      color: var(--muted);
+      font-size: 28px;
+      text-align: center;
+    }
+    .step-labels span { font-weight: 700; white-space: nowrap; }
+    .step-labels .active-label { color: var(--electron); text-decoration: underline 3px; text-underline-offset: 5px; }
+    .status-bar {
+      min-height: 60px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 12px;
+      padding: 8px 18px;
+      border-top: 2px solid var(--rule);
+      border-bottom: 2px solid var(--rule);
+      border-left: 8px solid var(--electron);
+      background: rgba(255, 255, 255, .9);
+      font-size: 28px;
+      line-height: 1.35;
+      text-align: center;
+    }
+    .step-badge { padding: 3px 14px; background: var(--ink); color: #fff; font-size: 28px; font-weight: 800; white-space: nowrap; }
+    .explanation { padding: 8px 18px; border-top: 2px solid var(--rule); border-bottom: 2px solid var(--rule); background: var(--surface); }
+    .explanation summary { cursor: pointer; font-size: 28px; font-weight: 800; }
+    .explanation p { margin: 7px 0 0; font-size: 28px; line-height: 1.35; }
+    @media (max-height: 1080px) and (min-width: 901px) {
+      .page { gap: 6px; padding: 6px 0; }
+      h1 { margin: 0 0 2px; line-height: 1; }
+      .hero-equation { padding: 3px 20px; }
+      .hero-note { margin-top: 2px; }
+      .canvas-card { max-height: 45vh; }
+      .ctrl-btn { min-height: 54px; }
+      .status-bar { min-height: 52px; padding: 4px 18px; }
+      .explanation { padding: 5px 18px; }
+    }
+    @media (max-height: 900px) {
+      .canvas-card { max-height: 45vh; }
+      .explanation { display: none; }
+    }
+    @media (max-width: 900px) {
+      body { overflow: auto; }
+      .page { height: auto; min-height: 100vh; grid-template-rows: auto auto auto auto auto; }
+      .canvas-card { width: 100%; height: auto; min-height: 0; max-height: none; aspect-ratio: 1600 / 680; }
+      .controls { flex-wrap: wrap; }
+      .progress-wrap { min-width: 100%; order: 2; }
+      .step-labels { font-size: 28px; }
+      .status-bar { align-items: flex-start; flex-direction: column; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <header class="hero">
+      <p class="eyebrow">必修一 · 1.3.1 氧化还原反应</p>
+      <h1>电子的得失：钠与氯</h1>
+      <p class="hero-equation" aria-label="钠原子失去一个电子，氯原子得到一个电子，形成氯化钠离子对">Na → Na⁺ + e⁻　　Cl + e⁻ → Cl⁻</p>
+      <p class="hero-note">用电子层数量追踪一个电子从钠到氯的转移</p>
+    </header>
+
+    <section class="canvas-card" aria-label="钠原子向氯原子转移电子并形成氯化钠离子对的动画">
+      <canvas id="redoxCanvas" role="img" aria-label="初始显示左侧 Na 原子的 2-8-1 电子层和右侧 Cl 原子的 2-8-7 电子层；动画中一个电子从 Na 转移至 Cl，形成 Na⁺ 和 Cl⁻ 离子对">
+        您的浏览器不支持 Canvas。动画内容为：Na 的一个最外层电子转移到 Cl，形成 Na⁺ 与 Cl⁻ 氯化钠离子对。
+      </canvas>
+    </section>
+
+    <section class="controls" aria-label="动画播放控制">
+      <button class="ctrl-btn" id="playBtn" type="button" aria-label="播放动画" title="播放或暂停动画">播放</button>
+      <button class="ctrl-btn ctrl-btn-secondary" id="resetBtn" type="button" aria-label="重置动画" title="回到起点">重置</button>
+      <button class="ctrl-btn ctrl-btn-secondary" id="prevBtn" type="button" aria-label="上一阶段" title="跳到上一阶段">上一阶段</button>
+      <button class="ctrl-btn ctrl-btn-secondary" id="nextBtn" type="button" aria-label="下一阶段" title="跳到下一阶段">下一阶段</button>
+      <div class="progress-wrap">
+        <div class="progress-track" id="progressTrack" role="slider" tabindex="0" aria-label="动画进度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-valuetext="阶段一：中性原子">
+          <div class="progress-fill" id="progressFill"></div>
+          <div class="progress-dot" id="progressDot"></div>
+          <span class="step-divider" style="left: 33.3333%" aria-hidden="true"></span>
+          <span class="step-divider" style="left: 66.6667%" aria-hidden="true"></span>
+        </div>
+        <div class="step-labels" id="stepLabels" aria-hidden="true">
+          <span data-step="0">① 中性原子</span>
+          <span data-step="1">② 电子转移</span>
+          <span data-step="2">③ 离子对形成</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="status-bar" aria-live="polite" aria-atomic="true">
+      <span class="step-badge" id="stepBadge">中性原子</span>
+      <span id="statusText">点击“播放”开始观察 Na 与 Cl 的电子层。</span>
+    </section>
+
+    <details class="explanation">
+      <summary>反应原理与动画说明</summary>
+      <p>Na 的电子层为 2-8-1，失去最外层 1 个电子后，原第二层的 8 个电子成为 Na⁺ 的最外层；Cl 的电子层由 2-8-7 变为 2-8-8，形成 Cl⁻。</p>
+      <p><strong>教学边界：</strong>画面用同心圆和层级数字表示静止电子，不逐个绘制静止电子；转移过程只绘制一个带 e⁻ 标记的飞行电子。Na⁺ 与 Cl⁻ 通过静电作用形成氯化钠离子对，不表示为共价键或独立分子。</p>
+    </details>
+  </main>
+
+  <script>
+    'use strict';
+
+    const canvas = document.getElementById('redoxCanvas');
+    const ctx = canvas.getContext('2d');
+    const VW = 1600;
+    const VH = 680;
+    const STEP_DURATIONS = Object.freeze([2, 2, 2]);
+    const STEP_STARTS = Object.freeze([0, 2, 4]);
+    const TOTAL_DURATION = 6;
+    const DEPARTURE_AT = 0;
+    const ARRIVAL_AT = 2;
+    const SHELL_RADII = Object.freeze([82, 132, 182]);
+    const STAGE_NAMES = Object.freeze(['中性原子', '电子转移', '离子对形成']);
+    const STAGE_TEXT = Object.freeze([
+      'Na：2-8-1；Cl：2-8-7。两者都是电中性原子。',
+      'Na 的最外层电子离开后，第三层消失；一个 e⁻ 正沿弧线移向 Cl。',
+      '电子已到达 Cl：Na⁺ 为 2-8，Cl⁻ 为 2-8-8；两个离子正在靠近形成离子对。'
+    ]);
+    const COLORS = Object.freeze({
+      na: '#c76724',
+      cl: '#167d78',
+      electron: '#d89616',
+      ink: '#263746',
+      muted: '#556975',
+      scene: '#f5f8ff',
+      grid: '#dbe5ea'
+    });
+
+    let currentTime = 0;
+    let playing = false;
+    let dragging = false;
+    let lastTimestamp = null;
+
+    const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
+    const lerp = (a, b, t) => a + (b - a) * t;
+    const easeInOut = (t) => t * t * (3 - 2 * t);
+    const getStepFromTime = (time) => {
+      const t = clamp(Number(time) || 0, 0, TOTAL_DURATION);
+      for (let i = STEP_STARTS.length - 1; i >= 0; i -= 1) {
+        if (t >= STEP_STARTS[i]) return i;
+      }
+      return 0;
+    };
+    const getLocalProgress = (time, step) => {
+      const duration = STEP_DURATIONS[step];
+      return duration === 0 ? 1 : clamp((time - STEP_STARTS[step]) / duration, 0, 1);
+    };
+
+    function getAtomPosition(time, atomId) {
+      const separated = atomId === 'Na' ? { x: 430, y: 320 } : { x: 1170, y: 320 };
+      const paired = atomId === 'Na' ? { x: 620, y: 320 } : { x: 980, y: 320 };
+      if (time < STEP_STARTS[2]) return separated;
+      const amount = easeInOut(getLocalProgress(time, 2));
+      return { x: lerp(separated.x, paired.x, amount), y: lerp(separated.y, paired.y, amount) };
+    }
+
+    function getRedoxState(time) {
+      const t = clamp(Number(time) || 0, 0, TOTAL_DURATION);
+      const departed = t >= STEP_STARTS[1] + DEPARTURE_AT;
+      const arrived = t >= STEP_STARTS[1] + ARRIVAL_AT;
+      const na = {
+        id: 'Na',
+        element: 'Na',
+        charge: arrived ? '⁺' : '',
+        shells: departed ? [2, 8] : [2, 8, 1],
+        position: getAtomPosition(t, 'Na')
+      };
+      const cl = {
+        id: 'Cl',
+        element: 'Cl',
+        charge: arrived ? '⁻' : '',
+        shells: arrived ? [2, 8, 8] : [2, 8, 7],
+        position: getAtomPosition(t, 'Cl')
+      };
+      return {
+        time: t,
+        step: getStepFromTime(t),
+        localProgress: getLocalProgress(t, getStepFromTime(t)),
+        departed,
+        arrived,
+        atoms: { Na: na, Cl: cl },
+        movingElectron: getMovingElectron(t, na, cl)
+      };
+    }
+
+    function getMovingElectron(time, na, cl) {
+      const start = STEP_STARTS[1] + DEPARTURE_AT;
+      const end = STEP_STARTS[1] + ARRIVAL_AT;
+      if (time < start || time >= end) return null;
+      const progress = clamp((time - start) / (end - start), 0, 1);
+      const p0 = { x: na.position.x + SHELL_RADII[2], y: na.position.y - 22 };
+      const p2 = { x: cl.position.x - SHELL_RADII[2], y: cl.position.y - 22 };
+      const p1 = { x: (p0.x + p2.x) / 2, y: na.position.y - 210 };
+      const x = (1 - progress) * (1 - progress) * p0.x + 2 * (1 - progress) * progress * p1.x + progress * progress * p2.x;
+      const y = (1 - progress) * (1 - progress) * p0.y + 2 * (1 - progress) * progress * p1.y + progress * progress * p2.y;
+      return { x, y, progress, start: p0, control: p1, end: p2 };
+    }
+
+    function resizeCanvas() {
+      const rect = canvas.getBoundingClientRect();
+      const dpr = Math.max(1, Math.min(window.devicePixelRatio || 1, 2));
+      canvas.width = Math.round(rect.width * dpr);
+      canvas.height = Math.round(rect.height * dpr);
+      ctx.setTransform(canvas.width / VW, 0, 0, canvas.height / VH, 0, 0);
+      renderFrame();
+    }
+
+    function roundRectPath(context, x, y, width, height, radius) {
+      const r = Math.min(radius, width / 2, height / 2);
+      context.beginPath();
+      context.moveTo(x + r, y);
+      context.arcTo(x + width, y, x + width, y + height, r);
+      context.arcTo(x + width, y + height, x, y + height, r);
+      context.arcTo(x, y + height, x, y, r);
+      context.arcTo(x, y, x + width, y, r);
+      context.closePath();
+    }
+
+    function drawSceneBackground() {
+      ctx.fillStyle = COLORS.scene;
+      ctx.fillRect(0, 0, VW, VH);
+      ctx.strokeStyle = COLORS.grid;
+      ctx.lineWidth = 2;
+      for (let x = 80; x < VW; x += 80) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, VH);
+        ctx.stroke();
+      }
+      for (let y = 40; y < VH; y += 80) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(VW, y);
+        ctx.stroke();
+      }
+      ctx.fillStyle = 'rgba(255,255,255,.78)';
+      roundRectPath(ctx, 70, 42, 1460, 86, 8);
+      ctx.fill();
+      ctx.strokeStyle = '#c5d1d8';
+      ctx.stroke();
+      ctx.fillStyle = COLORS.ink;
+      ctx.font = '700 32px "Microsoft YaHei", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('同心圆表示电子层，数字表示该层电子数', VW / 2, 85);
+    }
+
+    function drawTransferPath(electron) {
+      if (!electron) return;
+      ctx.save();
+      ctx.strokeStyle = 'rgba(216,150,22,.42)';
+      ctx.lineWidth = 7;
+      ctx.setLineDash([14, 12]);
+      ctx.beginPath();
+      ctx.moveTo(electron.start.x, electron.start.y);
+      ctx.quadraticCurveTo(electron.control.x, electron.control.y, electron.end.x, electron.end.y);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    function drawAtom(atom) {
+      const { x, y } = atom.position;
+      const color = atom.id === 'Na' ? COLORS.na : COLORS.cl;
+      ctx.save();
+      ctx.strokeStyle = color;
+      ctx.fillStyle = color;
+      ctx.lineWidth = 5;
+      atom.shells.forEach((count, index) => {
+        const radius = SHELL_RADII[index];
+        ctx.globalAlpha = index === atom.shells.length - 1 ? .95 : .58;
+        ctx.beginPath();
+        ctx.arc(x, y, radius, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+      });
+
+      atom.shells.forEach((count, index) => {
+        const radius = SHELL_RADII[index];
+        const direction = atom.id === 'Na' ? 1 : -1;
+        const labelX = x + direction * radius;
+        const labelY = y;
+        ctx.fillStyle = color;
+        ctx.font = '800 40px "Microsoft YaHei", sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        const labelWidth = ctx.measureText(String(count)).width;
+        const labelRadius = Math.max(28, labelWidth / 2 + 8);
+        ctx.fillStyle = '#fff';
+        ctx.beginPath();
+        ctx.arc(labelX, labelY, labelRadius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = color;
+        ctx.fillText(String(count), labelX, labelY);
+      });
+
+      ctx.shadowColor = `${color}55`;
+      ctx.shadowBlur = 22;
+      ctx.fillStyle = '#fff';
+      ctx.beginPath();
+      ctx.arc(x, y, 54, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.shadowBlur = 0;
+      ctx.lineWidth = 6;
+      ctx.strokeStyle = color;
+      ctx.stroke();
+
+      ctx.fillStyle = color;
+      ctx.font = '800 54px "Microsoft YaHei", sans-serif';
+      ctx.fillText(`${atom.element}${atom.charge}`, x, y - 2);
+      ctx.font = '700 30px "Microsoft YaHei", sans-serif';
+      ctx.fillText(atom.charge ? '离子' : '原子', x, y + 108);
+      ctx.restore();
+    }
+
+    function drawElectron(electron) {
+      if (!electron) return;
+      ctx.save();
+      ctx.shadowColor = COLORS.electron;
+      ctx.shadowBlur = 30;
+      ctx.fillStyle = '#fff4c7';
+      ctx.strokeStyle = COLORS.electron;
+      ctx.lineWidth = 7;
+      ctx.beginPath();
+      ctx.arc(electron.x, electron.y, 27, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+      ctx.fillStyle = '#7b5500';
+      ctx.font = '800 29px "Cambria Math", "Times New Roman", serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('e⁻', electron.x, electron.y);
+      ctx.restore();
+    }
+
+    function drawCenterNote(state) {
+      ctx.save();
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      if (state.arrived) {
+        ctx.fillStyle = COLORS.ink;
+        ctx.font = '800 36px "Microsoft YaHei", sans-serif';
+        ctx.fillText('电子转移完成：Na⁺ 　Cl⁻', VW / 2, 580);
+      } else if (state.departed) {
+        ctx.fillStyle = COLORS.electron;
+        ctx.font = '800 36px "Microsoft YaHei", sans-serif';
+        ctx.fillText('Na 的第三层已消失，e⁻ 正在转移', VW / 2, 580);
+      } else {
+        ctx.fillStyle = COLORS.muted;
+        ctx.font = '700 34px "Microsoft YaHei", sans-serif';
+        ctx.fillText('Na 失去最外层电子　→　Cl 得到电子', VW / 2, 580);
+      }
+      if (state.step === 2) {
+        ctx.fillStyle = COLORS.electron;
+        ctx.font = '800 34px "Microsoft YaHei", sans-serif';
+        ctx.fillText('氯化钠离子对（NaCl）', VW / 2, 625);
+      }
+      ctx.restore();
+    }
+
+    function renderFrame() {
+      if (!ctx) return;
+      const state = getRedoxState(currentTime);
+      ctx.save();
+      ctx.setTransform(canvas.width / VW, 0, 0, canvas.height / VH, 0, 0);
+      drawSceneBackground();
+      drawTransferPath(state.movingElectron);
+      drawAtom(state.atoms.Na);
+      drawAtom(state.atoms.Cl);
+      drawElectron(state.movingElectron);
+      drawCenterNote(state);
+      ctx.restore();
+      updateUi(state);
+    }
+
+    function updateUi(state) {
+      const ratio = state.time / TOTAL_DURATION;
+      document.getElementById('progressFill').style.width = `${ratio * 100}%`;
+      document.getElementById('progressDot').style.left = `${ratio * 100}%`;
+      document.getElementById('progressTrack').setAttribute('aria-valuenow', String(Math.round(ratio * 100)));
+      document.getElementById('progressTrack').setAttribute('aria-valuetext', `阶段${state.step + 1}：${STAGE_NAMES[state.step]}，${state.time.toFixed(2)}秒`);
+      document.getElementById('stepBadge').textContent = STAGE_NAMES[state.step];
+      document.getElementById('statusText').textContent = STAGE_TEXT[state.step];
+      document.querySelectorAll('#stepLabels span').forEach((label) => {
+        label.classList.toggle('active-label', Number(label.dataset.step) === state.step);
+      });
+      const playBtn = document.getElementById('playBtn');
+      playBtn.textContent = playing ? '暂停' : '播放';
+      playBtn.setAttribute('aria-label', playing ? '暂停动画' : '播放动画');
+      document.getElementById('prevBtn').disabled = state.step === 0 && state.time <= 0;
+      document.getElementById('nextBtn').disabled = state.time >= TOTAL_DURATION;
+    }
+
+    function goToTime(time, pause = true) {
+      currentTime = clamp(Number(time) || 0, 0, TOTAL_DURATION);
+      if (pause) playing = false;
+      lastTimestamp = null;
+      renderFrame();
+    }
+
+    function togglePlayback() {
+      if (currentTime >= TOTAL_DURATION) currentTime = 0;
+      playing = !playing;
+      lastTimestamp = null;
+      renderFrame();
+    }
+
+    function jumpStage(direction) {
+      const currentStep = getStepFromTime(currentTime);
+      const targetStep = clamp(currentStep + direction, 0, STEP_STARTS.length - 1);
+      goToTime(STEP_STARTS[targetStep]);
+    }
+
+    function seekFromPointer(event) {
+      const rect = document.getElementById('progressTrack').getBoundingClientRect();
+      const ratio = clamp((event.clientX - rect.left) / rect.width, 0, 1);
+      goToTime(ratio * TOTAL_DURATION);
+    }
+
+    function tick(timestamp) {
+      if (playing) {
+        if (lastTimestamp === null) lastTimestamp = timestamp;
+        const delta = Math.min((timestamp - lastTimestamp) / 1000, .08);
+        lastTimestamp = timestamp;
+        currentTime = clamp(currentTime + delta, 0, TOTAL_DURATION);
+        if (currentTime >= TOTAL_DURATION) {
+          currentTime = TOTAL_DURATION;
+          playing = false;
+          lastTimestamp = null;
+        }
+        renderFrame();
+      }
+      window.requestAnimationFrame(tick);
+    }
+
+    document.getElementById('playBtn').addEventListener('click', togglePlayback);
+    document.getElementById('resetBtn').addEventListener('click', () => goToTime(0));
+    document.getElementById('prevBtn').addEventListener('click', () => jumpStage(-1));
+    document.getElementById('nextBtn').addEventListener('click', () => jumpStage(1));
+    document.getElementById('progressTrack').addEventListener('pointerdown', (event) => {
+      dragging = true;
+      event.currentTarget.setPointerCapture(event.pointerId);
+      seekFromPointer(event);
+    });
+    document.getElementById('progressTrack').addEventListener('pointermove', (event) => {
+      if (dragging) seekFromPointer(event);
+    });
+    document.getElementById('progressTrack').addEventListener('pointerup', () => { dragging = false; });
+    document.getElementById('progressTrack').addEventListener('pointercancel', () => { dragging = false; });
+    document.getElementById('progressTrack').addEventListener('keydown', (event) => {
+      if (event.key === 'ArrowLeft') { event.preventDefault(); goToTime(currentTime - .1); }
+      if (event.key === 'ArrowRight') { event.preventDefault(); goToTime(currentTime + .1); }
+      if (event.key === 'Home') { event.preventDefault(); goToTime(0); }
+      if (event.key === 'End') { event.preventDefault(); goToTime(TOTAL_DURATION); }
+    });
+    document.addEventListener('keydown', (event) => {
+      if (event.target === document.getElementById('progressTrack')) return;
+      if (event.code === 'Space') { event.preventDefault(); togglePlayback(); }
+      if (event.key.toLowerCase() === 'r' || event.key === 'Home') { event.preventDefault(); goToTime(0); }
+      if (event.key === 'End') { event.preventDefault(); goToTime(TOTAL_DURATION); }
+      if (event.key === 'ArrowLeft') { event.preventDefault(); goToTime(currentTime - .1); }
+      if (event.key === 'ArrowRight') { event.preventDefault(); goToTime(currentTime + .1); }
+    });
+    if (window.ResizeObserver) new ResizeObserver(resizeCanvas).observe(canvas);
+    window.addEventListener('resize', resizeCanvas);
+
+    window.__redoxDebug = Object.freeze({
+      STEP_DURATIONS: [...STEP_DURATIONS],
+      STEP_STARTS: [...STEP_STARTS],
+      TOTAL_DURATION,
+      DEPARTURE_AT,
+      ARRIVAL_AT,
+      getStepFromTime,
+      getLocalProgress,
+      getState: getRedoxState,
+      getElectronPath: (time) => {
+        const state = getRedoxState(time);
+        return state.movingElectron ? {
+          start: { ...state.movingElectron.start },
+          control: { ...state.movingElectron.control },
+          end: { ...state.movingElectron.end },
+          progress: state.movingElectron.progress
+        } : null;
+      }
+    });
+
+    resizeCanvas();
+    renderFrame();
+    window.requestAnimationFrame(tick);
+  </script>
+</body>
+</html>
