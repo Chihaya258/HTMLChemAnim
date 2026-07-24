@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>电子对的共用：氢与氯</title>
+  <style>
+    :root {
+      --page: #f0f2f5;
+      --surface: #ffffff;
+      --scene: #f5f8ff;
+      --ink: #263746;
+      --muted: #556975;
+      --rule: #bdc8d0;
+      --h: #8a4f9e;
+      --cl: #167d78;
+      --electron: #c78316;
+      --focus: #b84e22;
+    }
+    * { box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; margin: 0; }
+    body {
+      overflow: hidden;
+      background: var(--page);
+      color: var(--ink);
+      font-family: "Microsoft YaHei", "PingFang SC", "Hiragino Sans GB", sans-serif;
+    }
+    .page {
+      width: min(1880px, calc(100% - 32px));
+      height: 100vh;
+      margin: 0 auto;
+      padding: 12px 0;
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr) auto auto;
+      gap: 10px;
+    }
+    .hero { text-align: center; }
+    .eyebrow, .hero-note {
+      margin: 0;
+      color: var(--muted);
+      font-size: 28px;
+      line-height: 1.2;
+    }
+    .eyebrow { color: var(--electron); font-weight: 800; letter-spacing: .12em; }
+    h1 {
+      margin: 2px 0 6px;
+      font-family: "STKaiti", "KaiTi", serif;
+      font-size: 52px;
+      line-height: 1.08;
+      letter-spacing: .08em;
+    }
+    .hero-equation {
+      display: inline-block;
+      margin: 0;
+      padding: 6px 20px;
+      border-top: 2px solid var(--ink);
+      border-bottom: 2px solid var(--ink);
+      font-family: "Cambria Math", "Times New Roman", serif;
+      font-size: 34px;
+      font-weight: 700;
+    }
+    .hero-note { margin-top: 5px; }
+    .canvas-card {
+      width: min(100%, calc(45vh * 1600 / 680));
+      aspect-ratio: 1600 / 680;
+      min-height: 0;
+      margin: 0 auto;
+      overflow: hidden;
+      position: relative;
+      border: 2px solid var(--rule);
+      border-radius: 4px;
+      background: var(--surface);
+      box-shadow: 8px 8px 0 rgba(38, 55, 70, .1);
+    }
+    canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+    .controls { display: flex; align-items: center; gap: 12px; }
+    .ctrl-btn {
+      min-width: 112px;
+      min-height: 58px;
+      border: 3px solid var(--ink);
+      border-radius: 4px;
+      background: var(--ink);
+      color: #fff;
+      cursor: pointer;
+      font-size: 28px;
+      font-weight: 800;
+    }
+    .ctrl-btn-secondary { background: var(--surface); color: var(--ink); }
+    .ctrl-btn:hover:not(:disabled) { background: var(--h); color: #fff; }
+    .ctrl-btn-secondary:hover:not(:disabled) { background: #e7eff2; color: var(--ink); }
+    .ctrl-btn:disabled { opacity: .45; cursor: not-allowed; }
+    .ctrl-btn:focus-visible, .progress-track:focus-visible {
+      outline: 4px solid var(--focus);
+      outline-offset: 3px;
+    }
+    .progress-wrap { flex: 1; min-width: 0; }
+    .progress-track {
+      height: 28px;
+      position: relative;
+      border: 3px solid var(--ink);
+      background: #e3e9ed;
+      cursor: pointer;
+      touch-action: none;
+    }
+    .progress-fill { width: 0; height: 100%; background: var(--ink); pointer-events: none; }
+    .progress-dot {
+      width: 28px;
+      height: 28px;
+      position: absolute;
+      top: 50%; left: 0;
+      border: 4px solid var(--electron);
+      border-radius: 50%;
+      background: var(--surface);
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+    }
+    .step-divider { position: absolute; top: 0; bottom: 0; width: 3px; background: var(--surface); }
+    .step-labels {
+      display: grid;
+      grid-template-columns: 2fr 3.4fr 2.5fr;
+      gap: 6px;
+      margin-top: 5px;
+      color: var(--muted);
+      font-size: 28px;
+      text-align: center;
+    }
+    .step-labels span { font-weight: 700; white-space: nowrap; }
+    .step-labels .active-label { color: var(--electron); text-decoration: underline 3px; text-underline-offset: 5px; }
+    .status-bar {
+      min-height: 60px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 12px;
+      padding: 8px 18px;
+      border-top: 2px solid var(--rule);
+      border-bottom: 2px solid var(--rule);
+      border-left: 8px solid var(--electron);
+      background: rgba(255, 255, 255, .9);
+      font-size: 28px;
+      line-height: 1.35;
+      text-align: center;
+    }
+    .step-badge { padding: 3px 14px; background: var(--ink); color: #fff; font-size: 28px; font-weight: 800; white-space: nowrap; }
+    @media (max-height: 1080px) and (min-width: 901px) {
+      .page { gap: 6px; padding: 6px 0; }
+      h1 { margin: 0 0 2px; line-height: 1; }
+      .hero-equation { padding: 3px 20px; }
+      .hero-note { margin-top: 2px; }
+      .canvas-card { max-height: 45vh; }
+      .ctrl-btn { min-height: 54px; }
+      .status-bar { min-height: 52px; padding: 4px 18px; }
+    }
+    @media (max-width: 900px) {
+      body { overflow: auto; }
+      .page { height: auto; min-height: 100vh; grid-template-rows: auto auto auto auto; }
+      .canvas-card { width: 100%; max-height: none; aspect-ratio: 1600 / 680; }
+      .controls { flex-wrap: wrap; }
+      .progress-wrap { min-width: 100%; order: 2; }
+      .status-bar { align-items: flex-start; flex-direction: column; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <header class="hero">
+      <p class="eyebrow">必修一 · 1.3.1 氧化还原反应</p>
+      <h1>电子对的共用：氢与氯</h1>
+      <p class="hero-equation" aria-label="氢原子和氯原子的单电子形成一对共用电子">H·　+　·Cl　→　H : Cl</p>
+      <p class="hero-note">两个原子的单电子共同形成一对共用电子</p>
+    </header>
+
+    <section class="canvas-card" aria-label="氢原子和氯原子形成共用电子对的动画">
+      <canvas id="hclCanvas" role="img" aria-label="初始显示带一个电子的氢原子和带十七个电子的氯原子；两个单电子同步移到两核之间，最后形成氯化氢分子的共用电子对">
+        您的浏览器不支持 Canvas。动画内容为：氢原子与氯原子的两个单电子共同形成一对共用电子。
+      </canvas>
+    </section>
+
+    <section class="controls" aria-label="动画播放控制">
+      <button class="ctrl-btn" id="playBtn" type="button" aria-label="播放动画" aria-pressed="false" title="播放或暂停动画">播放</button>
+      <button class="ctrl-btn ctrl-btn-secondary" id="resetBtn" type="button" aria-label="重置动画" title="回到起点">重置</button>
+      <button class="ctrl-btn ctrl-btn-secondary" id="prevBtn" type="button" aria-label="上一阶段" title="跳到上一阶段">上一阶段</button>
+      <button class="ctrl-btn ctrl-btn-secondary" id="nextBtn" type="button" aria-label="下一阶段" title="跳到下一阶段">下一阶段</button>
+      <div class="progress-wrap">
+        <div class="progress-track" id="progressTrack" role="slider" tabindex="0" aria-label="动画进度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-valuetext="阶段一：中性原子">
+          <div class="progress-fill" id="progressFill"></div>
+          <div class="progress-dot" id="progressDot"></div>
+          <span class="step-divider" style="left: 25.3165%" aria-hidden="true"></span>
+          <span class="step-divider" style="left: 68.3544%" aria-hidden="true"></span>
+        </div>
+        <div class="step-labels" id="stepLabels" aria-hidden="true">
+          <span data-step="0">① 中性原子</span>
+          <span data-step="1">② 电子对形成</span>
+          <span data-step="2">③ 共用电子对</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="status-bar" aria-live="polite" aria-atomic="true">
+      <span class="step-badge" id="stepBadge">中性原子</span>
+      <span id="statusText">H 和 Cl 都有一个可参与成键的单电子。</span>
+    </section>
+  </main>
+
+  <script>
+    'use strict';
+
+    const canvas = document.getElementById('hclCanvas');
+    const ctx = canvas.getContext('2d');
+    const VW = 1600;
+    const VH = 680;
+    const STEP_DURATIONS = Object.freeze([2, 3.4, 2.5]);
+    const STEP_STARTS = Object.freeze([0, 2, 5.4]);
+    const TOTAL_DURATION = 7.9;
+    const STAGE_NAMES = Object.freeze(['中性原子', '电子对形成', '共用电子对']);
+    const STAGE_TEXT = Object.freeze([
+      'H 与 Cl 都是中性原子：H 有 1 个电子，Cl 有 17 个电子。',
+      '两个原子同步靠近；两个单电子从各自原子出发，正在共同移向两核之间。',
+      '两个电子共同出现在两核之间，形成一对共用电子；Cl 仍保留三对孤电子。'
+    ]);
+    const COLORS = Object.freeze({
+      h: '#8a4f9e', cl: '#167d78', electron: '#c78316', ink: '#263746',
+      muted: '#556975', scene: '#f5f8ff', grid: '#dbe5ea', shell: '#76a9a5'
+    });
+    const ELECTRON_IDS = Object.freeze([
+      'H_VALENCE', 'CL_K_1', 'CL_K_2', 'CL_L_1', 'CL_L_2', 'CL_L_3', 'CL_L_4',
+      'CL_L_5', 'CL_L_6', 'CL_L_7', 'CL_L_8', 'CL_VALENCE_1', 'CL_VALENCE_2',
+      'CL_VALENCE_3', 'CL_VALENCE_4', 'CL_VALENCE_5', 'CL_VALENCE_6', 'CL_VALENCE_7'
+    ]);
+    const SHARED_PAIR_IDS = Object.freeze(['H_VALENCE', 'CL_VALENCE_7']);
+    const H_SHELL_RADIUS = 112;
+    const CL_SHELLS = Object.freeze({ k: 72, l: 124, valence: 184 });
+    const CL_K_ANGLES = Object.freeze([0, Math.PI]);
+    const CL_L_ANGLES = Object.freeze(Array.from({ length: 8 }, (_, index) => -Math.PI / 2 + index * Math.PI / 4));
+    const CL_VALENCE_ANGLES = Object.freeze([-1.78, -1.36, -0.2, 0.2, 1.36, 1.78, Math.PI]);
+
+    let currentTime = 0;
+    let playing = false;
+    let dragging = false;
+    let lastTimestamp = null;
+
+    const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
+    const lerp = (a, b, t) => a + (b - a) * t;
+    const easeInOut = (t) => t * t * (3 - 2 * t);
+    const pointOnCircle = (center, radius, angle) => ({ x: center.x + Math.cos(angle) * radius, y: center.y + Math.sin(angle) * radius });
+    const pointOnQuadratic = (p0, p1, p2, t) => ({
+      x: (1 - t) * (1 - t) * p0.x + 2 * (1 - t) * t * p1.x + t * t * p2.x,
+      y: (1 - t) * (1 - t) * p0.y + 2 * (1 - t) * t * p1.y + t * t * p2.y
+    });
+    const getStepFromTime = (time) => {
+      const t = clamp(Number(time) || 0, 0, TOTAL_DURATION);
+      for (let index = STEP_STARTS.length - 1; index >= 0; index -= 1) {
+        if (t >= STEP_STARTS[index]) return index;
+      }
+      return 0;
+    };
+    const getLocalProgress = (time, step) => {
+      const duration = STEP_DURATIONS[step];
+      return duration === 0 ? 1 : clamp((time - STEP_STARTS[step]) / duration, 0, 1);
+    };
+
+    function getAtomPositions(time) {
+      const separated = { H: { x: 360, y: 338 }, Cl: { x: 1240, y: 338 } };
+      const bonded = { H: { x: 644, y: 338 }, Cl: { x: 940, y: 338 } };
+      if (time < STEP_STARTS[1]) return separated;
+      const amount = easeInOut(getLocalProgress(time, 1));
+      return {
+        H: { x: lerp(separated.H.x, bonded.H.x, amount), y: separated.H.y },
+        Cl: { x: lerp(separated.Cl.x, bonded.Cl.x, amount), y: separated.Cl.y }
+      };
+    }
+
+    function getElectronState(time) {
+      const t = clamp(Number(time) || 0, 0, TOTAL_DURATION);
+      const step = getStepFromTime(t);
+      const positions = getAtomPositions(t);
+      const formationProgress = step === 0 ? 0 : step === 1 ? easeInOut(getLocalProgress(t, 1)) : 1;
+      const electrons = [];
+      const addElectron = (id, owner, role, position) => electrons.push({ id, owner, role, x: position.x, y: position.y });
+
+      const hStart = pointOnCircle(positions.H, H_SHELL_RADIUS, 0);
+      const clStart = pointOnCircle(positions.Cl, CL_SHELLS.valence, Math.PI);
+      const tangentX = (positions.H.x + H_SHELL_RADIUS + positions.Cl.x - CL_SHELLS.valence) / 2;
+      const sharedTargets = [{ x: tangentX, y: positions.H.y - 34 }, { x: tangentX, y: positions.H.y + 34 }];
+      const hControl = { x: lerp(hStart.x, tangentX - 60, formationProgress), y: 230 };
+      const clControl = { x: lerp(clStart.x, tangentX + 60, formationProgress), y: 446 };
+      const hPosition = formationProgress === 0 ? hStart : pointOnQuadratic(hStart, hControl, sharedTargets[0], formationProgress);
+      const clPosition = formationProgress === 0 ? clStart : pointOnQuadratic(clStart, clControl, sharedTargets[1], formationProgress);
+      addElectron('H_VALENCE', 'H', formationProgress === 1 ? 'shared' : 'bonding', hPosition);
+
+      CL_K_ANGLES.forEach((angle, index) => addElectron(`CL_K_${index + 1}`, 'Cl', 'inner', pointOnCircle(positions.Cl, CL_SHELLS.k, angle)));
+      CL_L_ANGLES.forEach((angle, index) => addElectron(`CL_L_${index + 1}`, 'Cl', 'inner', pointOnCircle(positions.Cl, CL_SHELLS.l, angle)));
+      CL_VALENCE_ANGLES.slice(0, 6).forEach((angle, index) => addElectron(`CL_VALENCE_${index + 1}`, 'Cl', 'lone', pointOnCircle(positions.Cl, CL_SHELLS.valence, angle)));
+      addElectron('CL_VALENCE_7', 'Cl', formationProgress === 1 ? 'shared' : 'bonding', clPosition);
+
+      return {
+        time: t,
+        step,
+        localProgress: getLocalProgress(t, step),
+        formationProgress,
+        atoms: positions,
+        electrons,
+        sharedPairIds: [...SHARED_PAIR_IDS],
+        bondFormed: formationProgress === 1,
+        charges: { H: 0, Cl: 0 }
+      };
+    }
+
+    function resizeCanvas() {
+      const rect = canvas.getBoundingClientRect();
+      const dpr = Math.max(1, Math.min(window.devicePixelRatio || 1, 2));
+      canvas.width = Math.round(rect.width * dpr);
+      canvas.height = Math.round(rect.height * dpr);
+      ctx.setTransform(canvas.width / VW, 0, 0, canvas.height / VH, 0, 0);
+      renderFrame();
+    }
+
+    function roundRectPath(context, x, y, width, height, radius) {
+      const r = Math.min(radius, width / 2, height / 2);
+      context.beginPath();
+      context.moveTo(x + r, y);
+      context.arcTo(x + width, y, x + width, y + height, r);
+      context.arcTo(x + width, y + height, x, y + height, r);
+      context.arcTo(x, y + height, x, y, r);
+      context.arcTo(x, y, x + width, y, r);
+      context.closePath();
+    }
+
+    function drawSceneBackground(state) {
+      ctx.fillStyle = COLORS.scene;
+      ctx.fillRect(0, 0, VW, VH);
+      ctx.strokeStyle = COLORS.grid;
+      ctx.lineWidth = 2;
+      for (let x = 80; x < VW; x += 80) {
+        ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, VH); ctx.stroke();
+      }
+      for (let y = 40; y < VH; y += 80) {
+        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(VW, y); ctx.stroke();
+      }
+      ctx.fillStyle = 'rgba(255,255,255,.82)';
+      roundRectPath(ctx, 70, 42, 1460, 76, 8);
+      ctx.fill();
+      ctx.strokeStyle = '#c5d1d8';
+      ctx.stroke();
+      ctx.fillStyle = COLORS.ink;
+      ctx.font = '700 30px "Microsoft YaHei", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      const note = state.step === 0 ? '每一个点都表示一个电子：全程共 18 个电子' : state.step === 1 ? '两颗单电子同时向两核之间移动' : '两核之间的两颗电子组成一对共用电子';
+      ctx.fillText(note, VW / 2, 80);
+    }
+
+    function drawHShellGuide(hPosition) {
+      ctx.save();
+      ctx.strokeStyle = COLORS.h;
+      ctx.globalAlpha = .36;
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(hPosition.x, hPosition.y, H_SHELL_RADIUS, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    function drawShellGuides(clPosition) {
+      ctx.save();
+      ctx.strokeStyle = COLORS.shell;
+      ctx.lineWidth = 3;
+      [CL_SHELLS.k, CL_SHELLS.l, CL_SHELLS.valence].forEach((radius, index) => {
+        ctx.globalAlpha = index === 2 ? .36 : .24;
+        ctx.beginPath();
+        ctx.arc(clPosition.x, clPosition.y, radius, 0, Math.PI * 2);
+        ctx.stroke();
+      });
+      ctx.restore();
+    }
+
+    function drawElectronPath(state) {
+      if (state.step !== 1) return;
+      const hElectron = state.electrons.find((electron) => electron.id === 'H_VALENCE');
+      const clElectron = state.electrons.find((electron) => electron.id === 'CL_VALENCE_7');
+      const hStart = pointOnCircle(state.atoms.H, H_SHELL_RADIUS, 0);
+      const clStart = pointOnCircle(state.atoms.Cl, CL_SHELLS.valence, Math.PI);
+      const tangentX = (state.atoms.H.x + H_SHELL_RADIUS + state.atoms.Cl.x - CL_SHELLS.valence) / 2;
+      const upperTarget = { x: tangentX, y: state.atoms.H.y - 34 };
+      const lowerTarget = { x: tangentX, y: state.atoms.H.y + 34 };
+      ctx.save();
+      ctx.strokeStyle = 'rgba(199,131,22,.35)';
+      ctx.lineWidth = 5;
+      ctx.setLineDash([12, 11]);
+      const hControlX = lerp(hStart.x, tangentX - 60, state.formationProgress);
+      const clControlX = lerp(clStart.x, tangentX + 60, state.formationProgress);
+      ctx.beginPath();
+      ctx.moveTo(hStart.x, hStart.y);
+      ctx.quadraticCurveTo(hControlX, 230, upperTarget.x, upperTarget.y);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(clStart.x, clStart.y);
+      ctx.quadraticCurveTo(clControlX, 446, lowerTarget.x, lowerTarget.y);
+      ctx.stroke();
+      ctx.restore();
+      return { hElectron, clElectron };
+    }
+
+    function drawNucleus(position, element, color) {
+      ctx.save();
+      ctx.shadowColor = `${color}44`;
+      ctx.shadowBlur = 20;
+      ctx.fillStyle = '#fff';
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 6;
+      ctx.beginPath();
+      ctx.arc(position.x, position.y, element === 'H' ? 52 : 64, 0, Math.PI * 2);
+      ctx.fill(); ctx.stroke();
+      ctx.shadowBlur = 0;
+      ctx.fillStyle = color;
+      ctx.font = `800 ${element === 'H' ? 52 : 56}px "Microsoft YaHei", sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(element, position.x, position.y - 2);
+      ctx.restore();
+    }
+
+    function drawElectron(electron, isShared) {
+      ctx.save();
+      ctx.shadowColor = isShared ? 'rgba(199,131,22,.85)' : 'rgba(199,131,22,.44)';
+      ctx.shadowBlur = isShared ? 28 : 16;
+      ctx.fillStyle = '#fff5cf';
+      ctx.strokeStyle = COLORS.electron;
+      ctx.lineWidth = isShared ? 7 : 5;
+      ctx.beginPath();
+      ctx.arc(electron.x, electron.y, isShared ? 18 : 13, 0, Math.PI * 2);
+      ctx.fill(); ctx.stroke();
+      ctx.restore();
+    }
+
+    function drawSourceGuides(state) {
+      if (state.step !== 0) return;
+      const hElectron = state.electrons.find((electron) => electron.id === 'H_VALENCE');
+      const clElectron = state.electrons.find((electron) => electron.id === 'CL_VALENCE_7');
+      const labels = [
+        { electron: hElectron, text: 'H 的单电子', x: 385, y: 196, color: COLORS.h, fontSize: 34 },
+        { electron: clElectron, text: 'Cl 的单电子', x: 920, y: 492, color: COLORS.cl, fontSize: 34 }
+      ];
+      labels.forEach(({ electron, text, x, y, color, fontSize }) => {
+        ctx.save();
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 3;
+        ctx.setLineDash([8, 7]);
+        ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(electron.x, electron.y); ctx.stroke();
+        ctx.fillStyle = color;
+        ctx.font = `800 ${fontSize}px "Microsoft YaHei", sans-serif`;
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText(text, x, y);
+        ctx.restore();
+      });
+    }
+
+    function drawFinalPairLabel(state) {
+      if (!state.bondFormed) return;
+      const tangentX = (state.atoms.H.x + H_SHELL_RADIUS + state.atoms.Cl.x - CL_SHELLS.valence) / 2;
+      ctx.save();
+      ctx.strokeStyle = COLORS.electron;
+      ctx.lineWidth = 3;
+      ctx.setLineDash([7, 6]);
+      ctx.beginPath(); ctx.moveTo(tangentX, 270); ctx.lineTo(tangentX, 283); ctx.stroke();
+      ctx.fillStyle = COLORS.electron;
+      ctx.font = '800 32px "Microsoft YaHei", sans-serif';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText('共用电子对', tangentX, 242);
+      ctx.restore();
+    }
+
+    function drawTeachingNote(state) {
+      ctx.save();
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillStyle = state.step === 1 ? COLORS.electron : COLORS.muted;
+      ctx.font = '700 34px "Microsoft YaHei", sans-serif';
+      const message = state.step === 0 ? '三对孤电子 + 一颗单电子' : state.step === 1 ? '两颗电子分别来自 H 与 Cl' : 'Cl 周围仍有三对孤电子';
+      ctx.fillText(message, VW / 2, 610);
+      ctx.restore();
+    }
+
+    function renderFrame() {
+      if (!ctx || !canvas.width || !canvas.height) return;
+      const state = getElectronState(currentTime);
+      ctx.save();
+      ctx.setTransform(canvas.width / VW, 0, 0, canvas.height / VH, 0, 0);
+      drawSceneBackground(state);
+      drawHShellGuide(state.atoms.H);
+      drawShellGuides(state.atoms.Cl);
+      drawElectronPath(state);
+      state.electrons.forEach((electron) => drawElectron(electron, SHARED_PAIR_IDS.includes(electron.id) && state.bondFormed));
+      drawNucleus(state.atoms.H, 'H', COLORS.h);
+      drawNucleus(state.atoms.Cl, 'Cl', COLORS.cl);
+      drawSourceGuides(state);
+      drawFinalPairLabel(state);
+      ctx.restore();
+      updateUi(state);
+    }
+
+    function updateUi(state) {
+      const ratio = state.time / TOTAL_DURATION;
+      document.getElementById('progressFill').style.width = `${ratio * 100}%`;
+      document.getElementById('progressDot').style.left = `${ratio * 100}%`;
+      const progressTrack = document.getElementById('progressTrack');
+      progressTrack.setAttribute('aria-valuenow', String(Math.round(ratio * 100)));
+      progressTrack.setAttribute('aria-valuetext', `阶段${state.step + 1}：${STAGE_NAMES[state.step]}，${state.time.toFixed(2)}秒`);
+      document.getElementById('stepBadge').textContent = STAGE_NAMES[state.step];
+      document.getElementById('statusText').textContent = STAGE_TEXT[state.step];
+      document.querySelectorAll('#stepLabels span').forEach((label) => label.classList.toggle('active-label', Number(label.dataset.step) === state.step));
+      const playBtn = document.getElementById('playBtn');
+      playBtn.textContent = playing ? '暂停' : '播放';
+      playBtn.setAttribute('aria-label', playing ? '暂停动画' : '播放动画');
+      playBtn.setAttribute('aria-pressed', String(playing));
+      document.getElementById('prevBtn').disabled = state.step === 0 && state.time <= 0;
+      document.getElementById('nextBtn').disabled = state.time >= TOTAL_DURATION;
+    }
+
+    function goToTime(time, pause = true) {
+      currentTime = clamp(Number(time) || 0, 0, TOTAL_DURATION);
+      if (pause) playing = false;
+      lastTimestamp = null;
+      renderFrame();
+    }
+
+    function togglePlayback() {
+      if (currentTime >= TOTAL_DURATION) currentTime = 0;
+      playing = !playing;
+      lastTimestamp = null;
+      renderFrame();
+    }
+
+    function jumpStage(direction) {
+      const currentStep = getStepFromTime(currentTime);
+      const targetStep = clamp(currentStep + direction, 0, STEP_STARTS.length - 1);
+      goToTime(STEP_STARTS[targetStep]);
+    }
+
+    function seekFromPointer(event) {
+      const rect = document.getElementById('progressTrack').getBoundingClientRect();
+      const ratio = clamp((event.clientX - rect.left) / rect.width, 0, 1);
+      goToTime(ratio * TOTAL_DURATION);
+    }
+
+    function tick(timestamp) {
+      if (playing) {
+        if (lastTimestamp === null) lastTimestamp = timestamp;
+        const delta = Math.min((timestamp - lastTimestamp) / 1000, .08);
+        lastTimestamp = timestamp;
+        currentTime = clamp(currentTime + delta, 0, TOTAL_DURATION);
+        if (currentTime >= TOTAL_DURATION) {
+          currentTime = TOTAL_DURATION;
+          playing = false;
+          lastTimestamp = null;
+        }
+        renderFrame();
+      }
+      window.requestAnimationFrame(tick);
+    }
+
+    document.getElementById('playBtn').addEventListener('click', togglePlayback);
+    document.getElementById('resetBtn').addEventListener('click', () => goToTime(0));
+    document.getElementById('prevBtn').addEventListener('click', () => jumpStage(-1));
+    document.getElementById('nextBtn').addEventListener('click', () => jumpStage(1));
+    document.getElementById('progressTrack').addEventListener('pointerdown', (event) => {
+      dragging = true;
+      event.currentTarget.setPointerCapture(event.pointerId);
+      seekFromPointer(event);
+    });
+    document.getElementById('progressTrack').addEventListener('pointermove', (event) => { if (dragging) seekFromPointer(event); });
+    document.getElementById('progressTrack').addEventListener('pointerup', () => { dragging = false; });
+    document.getElementById('progressTrack').addEventListener('pointercancel', () => { dragging = false; });
+    document.getElementById('progressTrack').addEventListener('keydown', (event) => {
+      if (event.key === 'ArrowLeft') { event.preventDefault(); goToTime(currentTime - .1); }
+      if (event.key === 'ArrowRight') { event.preventDefault(); goToTime(currentTime + .1); }
+      if (event.key === 'Home') { event.preventDefault(); goToTime(0); }
+      if (event.key === 'End') { event.preventDefault(); goToTime(TOTAL_DURATION); }
+    });
+    document.addEventListener('keydown', (event) => {
+      if (event.target === document.getElementById('progressTrack')) return;
+      if (event.code === 'Space') { event.preventDefault(); togglePlayback(); }
+      if (event.key.toLowerCase() === 'r' || event.key === 'Home') { event.preventDefault(); goToTime(0); }
+      if (event.key === 'End') { event.preventDefault(); goToTime(TOTAL_DURATION); }
+      if (event.key === 'ArrowLeft') { event.preventDefault(); goToTime(currentTime - .1); }
+      if (event.key === 'ArrowRight') { event.preventDefault(); goToTime(currentTime + .1); }
+    });
+    if (window.ResizeObserver) new ResizeObserver(resizeCanvas).observe(canvas);
+    window.addEventListener('resize', resizeCanvas);
+
+    function validateState(time) {
+      const state = getElectronState(time);
+      const ids = state.electrons.map((electron) => electron.id);
+      const clLoneElectrons = state.electrons.filter((electron) => electron.role === 'lone' && electron.owner === 'Cl');
+      const sharedElectrons = state.electrons.filter((electron) => state.sharedPairIds.includes(electron.id));
+      return Object.freeze({
+        time: state.time,
+        totalElectrons: ids.length,
+        uniqueElectronIds: new Set(ids).size,
+        hElectrons: state.electrons.filter((electron) => electron.owner === 'H').length,
+        clElectrons: state.electrons.filter((electron) => electron.owner === 'Cl').length,
+        sharedPairIds: [...state.sharedPairIds],
+        sharedElectronCount: sharedElectrons.length,
+        chlorineLoneElectronCount: clLoneElectrons.length,
+        charges: { ...state.charges },
+        isValid: ids.length === 18 && new Set(ids).size === 18 && state.charges.H === 0 && state.charges.Cl === 0
+      });
+    }
+
+    window.__hclBondDebug = Object.freeze({
+      ELECTRON_IDS: [...ELECTRON_IDS],
+      SHARED_PAIR_IDS: [...SHARED_PAIR_IDS],
+      STEP_DURATIONS: [...STEP_DURATIONS],
+      STEP_STARTS: [...STEP_STARTS],
+      TOTAL_DURATION,
+      getStepFromTime,
+      getLocalProgress,
+      getState: getElectronState,
+      getElectronPositions: (time) => getElectronState(time).electrons.map((electron) => ({ ...electron })),
+      validateState
+    });
+
+    resizeCanvas();
+    renderFrame();
+    window.requestAnimationFrame(tick);
+  </script>
+</body>
+</html>
